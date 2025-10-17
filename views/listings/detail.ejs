@@ -72,8 +72,21 @@
     <% if (reviews && reviews.length) { %>
       <% reviews.forEach(function(r){ %>
         <div class="review">
-          <p><strong><%= r.name %></strong> • <small><%= new Date(r.created_at).toLocaleString() %></small></p>
-          <p>Rating: <%= r.rating %> / 5</p>
+          <p>
+            <strong><%= r.name %></strong> • <small><%= new Date(r.created_at).toLocaleString() %></small>
+          </p>
+
+          <p aria-hidden="true">
+            <% for (let i=1;i<=5;i++) { %>
+              <% if (i <= r.rating) { %>
+                <span class="star filled">★</span>
+              <% } else { %>
+                <span class="star">☆</span>
+              <% } %>
+            <% } %>
+            <small style="color:var(--muted)"> — <%= r.rating %>/5</small>
+          </p>
+
           <p><%= r.comment %></p>
 
           <!-- reply list (if any) -->
@@ -97,7 +110,6 @@
               <button type="submit">Reply</button>
             </form>
           <% } %>
-
         </div>
       <% }) %>
     <% } else { %>

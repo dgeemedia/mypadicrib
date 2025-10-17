@@ -16,8 +16,9 @@
     <% if (listings && listings.length) { %>
       <div class="listing-grid">
         <% listings.forEach(function(l){ 
-             // ensure l.images is an array of image paths (controller can attach), fallback to [l.image_path]
              const imgs = (l.images && l.images.length) ? l.images.map(i=>i.image_path) : (l.image_path ? [l.image_path] : []);
+             const stats = l.reviewStats || {count:0, avg:0};
+             const latest = l.latestReview || null;
         %>
           <article class="card" data-images='<%= JSON.stringify(imgs) %>'>
             <div class="thumb">
@@ -32,8 +33,31 @@
               <h3><a href="/listings/<%= l.id %>"><%= l.title %></a></h3>
               <p style="color:var(--muted); font-size:14px"><%= l.description ? (l.description.length > 120 ? l.description.slice(0,120) + '…' : l.description) : '' %></p>
               <p style="margin-top:6px"><strong>Address:</strong> <%= l.address || '' %> — <%= l.state || '' %>, <%= l.lga || '' %></p>
+
+              <div class="meta-row">
+                <div class="rating-summary" title="<%= stats.avg %> average">
+                  <div aria-hidden="true">
+                    <% for (let i=1;i<=5;i++) { %>
+                      <% if (i <= Math.round(stats.avg)) { %>
+                        <span class="star filled small">★</span>
+                      <% } else { %>
+                        <span class="star small">☆</span>
+                      <% } %>
+                    <% } %>
+                  </div>
+                  <small>(<%= stats.count %>)</small>
+                </div>
+
+                <div style="margin-left:auto" class="price">&#8358;<%= l.price %> / night</div>
+              </div>
+
+              <% if (latest) { %>
+                <div class="reviews-excerpt">
+                  <small><strong><%= latest.name %></strong> — <%= latest.comment.length > 100 ? latest.comment.slice(0,100) + '…' : latest.comment %></small>
+                </div>
+              <% } %>
+
               <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
-                <div class="price">&#8358;<%= l.price %> / night</div>
                 <% if (user) { %>
                   <% if (user.id !== l.owner_id) { %>
                     <form method="GET" action="/payments/checkout" style="margin-left:auto;">
@@ -56,4 +80,3 @@
     <% } %>
   </section>
 </section>
-
