@@ -24,6 +24,8 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/locations', express.static(path.join(__dirname, 'locations')));
+
 
 app.use(session({
   secret: process.env.SESSION_SECRET,
@@ -50,6 +52,9 @@ app.use('/listings', require('./routes/listings'));
 app.use('/payments', require('./routes/payments'));
 app.use('/admin', require('./routes/admin'));
 app.use('/owner', require('./routes/owner'))
+app.use('/reviews', require('./routes/reviews'));
+app.use('/messages', require('./routes/messages'));
+
 
 // Start
 app.listen(PORT, () => {

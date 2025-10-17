@@ -1,13 +1,18 @@
 // controllers/listingController.js
 const listingModel = require('../models/listingModel');
 const listingImageModel = require('../models/listingImageModel');
+const reviewModel = require('../models/reviewModel');
 const db = require('../models/db');
 
 exports.index = async (req, res) => {
   try {
-    // get approved listings (with a first image)
-    const listings = await listingModel.getAllListings();
-    return res.render('listings/index', { listings, user: req.user });
+    const listings = await listingModel.getAllListings(); // returns base listing rows
+    // attach images for each listing in parallel
+    const enriched = await Promise.all(listings.map(async l => {
+      const imgs = await listingImageModel.getImages(l.id); // returns [{id,image_path},...]
+      return { ...l, images: imgs };
+    }));
+    return res.render('index', { listings: enriched, user: req.user });
   } catch (err) {
     console.error('listingController.index error', err);
     req.flash('error', 'Unable to fetch listings');
@@ -23,9 +28,7 @@ exports.show = async (req, res) => {
       req.flash('error', 'Listing not found');
       return res.redirect('/listings');
     }
-    // get reviews via DB (or reviewModel)
-    const reviews = await db.manyOrNone('SELECT r.*, u.name FROM reviews r JOIN users u ON u.id = r.user_id WHERE r.listing_id=$1 ORDER BY r.created_at DESC', [id]);
-    // pass user and listing.owner_id to the view so view can hide "Book" for owner of that listing
+    const reviews = await reviewModel.getReviewsForListing(id);
     return res.render('listings/detail', { listing: data.listing, images: data.images, reviews, user: req.user });
   } catch (err) {
     console.error('listingController.show', err);

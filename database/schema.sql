@@ -112,3 +112,51 @@ CREATE TABLE IF NOT EXISTS booking_services (
 CREATE INDEX IF NOT EXISTS idx_listings_owner ON listings(owner_id);
 
 -- 7) Admin/staff roles are stored in users.role already. (role: 'user' | 'owner' | 'admin' | 'staff')
+
+-- migrations/reviews_adjustments.sql
+-- 1) add parent_id if missing
+ALTER TABLE reviews
+  ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES reviews(id) ON DELETE CASCADE;
+
+-- 2) ensure rating column exists and add CHECK constraint
+ALTER TABLE reviews
+  ALTER COLUMN rating TYPE INTEGER USING rating::integer;
+
+-- add check only if not exists (Postgres doesn't have IF NOT EXISTS for constraints easily)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'reviews_rating_check') THEN
+    ALTER TABLE reviews ADD CONSTRAINT reviews_rating_check CHECK (rating >= 1 AND rating <= 5);
+  END IF;
+END$$;
+
+-- 3) make comment NOT NULL safely: set empty string for existing NULLs then enforce
+UPDATE reviews SET comment = '' WHERE comment IS NULL;
+ALTER TABLE reviews ALTER COLUMN comment SET NOT NULL;
+
+-- migrations/messages_and_conversations.sql
+
+CREATE TABLE IF NOT EXISTS conversations (
+  id SERIAL PRIMARY KEY,
+  subject TEXT,
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+  last_message_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS conversation_members (
+  id SERIAL PRIMARY KEY,
+  conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id SERIAL PRIMARY KEY,
+  conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  body TEXT NOT NULL,
+  read_by JSONB DEFAULT '[]'::JSONB, -- list of user ids who've read this message
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_conv_members_user ON conversation_members(user_id);

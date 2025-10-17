@@ -1,40 +1,107 @@
 <!-- views/listings/detail.ejs -->
-<section>
-  <h2><%= listing.title %></h2>
-  <p><%= listing.description %></p>
-  <p>Address: <%= listing.address || '' %> - <%= listing.state || '' %>, <%= listing.lga || '' %></p>
-  <p>Price per night: &#8358;<%= listing.price %></p>
+<section class="container">
+  <article class="card" style="align-items:flex-start;">
+    <div class="thumb" style="width:360px;height:260px;">
+      <% if (images && images.length) { %>
+        <img src="<%= images[0].image_path %>" alt="primary">
+      <% } else { %>
+        <div style="padding:12px;color:#888">No Image</div>
+      <% } %>
+    </div>
 
-  <% if (user) { %>
-    <% if (user.id !== listing.owner_id) { %>
-      <form method="GET" action="/payments/checkout">
-        <input type="hidden" name="listingId" value="<%= listing.id %>">
-        <button type="submit">Book / Proceed to Checkout</button>
-      </form>
-    <% } else { %>
-      <p style="color:#777;">This is your listing.</p>
-    <% } %>
-  <% } else { %>
-    <p><a href="/auth/login">Login</a> to book this listing</p>
-  <% } %>
+    <div style="flex:1;">
+      <h2><%= listing.title %></h2>
+      <p style="color:var(--muted)"><%= listing.description %></p>
+      <p><strong>Address:</strong> <%= listing.address || '' %> — <%= listing.state || '' %>, <%= listing.lga || '' %></p>
+      <p class="price">₦<%= listing.price %> / night</p>
 
-  <h3>Images</h3>
-  <% if (images && images.length) { %>
-    <div class="images">
-      <% images.forEach(function(img){ %>
-        <img src="<%= img.image_path %>" alt="listing image" width="200">
-      <% }) %>
+      <% if (user) { %>
+        <% if (user.id !== listing.owner_id) { %>
+          <form method="GET" action="/payments/checkout">
+            <input type="hidden" name="listingId" value="<%= listing.id %>">
+            <button type="submit">Book / Checkout</button>
+          </form>
+        <% } else { %>
+          <p style="color:#777;">This is your listing.</p>
+        <% } %>
+      <% } else { %>
+        <p><a href="/auth/login">Login</a> to book this listing</p>
+      <% } %>
+    </div>
+  </article>
+
+  <% if (images && images.length > 1) { %>
+    <div style="margin-top:12px;">
+      <h4>Gallery</h4>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <% images.forEach(function(img){ %>
+          <div style="width:110px;height:80px;overflow:hidden;border-radius:8px;cursor:pointer">
+            <img src="<%= img.image_path %>" style="width:100%;height:100%;object-fit:cover" alt="thumb">
+          </div>
+        <% }) %>
+      </div>
+      <small>Click an image to view full gallery.</small>
     </div>
   <% } %>
 
-  <h3>Reviews</h3>
-  <% if (reviews && reviews.length) { %>
-    <ul>
+  <section class="reviews">
+    <h3>Reviews</h3>
+
+    <!-- Add Review (only authenticated users) -->
+    <% if (user) { %>
+      <form class="review-form" method="POST" action="/reviews">
+        <input type="hidden" name="listing_id" value="<%= listing.id %>">
+        <label>Rating
+          <select name="rating" required>
+            <option value="5">5 - Excellent</option>
+            <option value="4">4 - Good</option>
+            <option value="3">3 - Okay</option>
+            <option value="2">2 - Poor</option>
+            <option value="1">1 - Terrible</option>
+          </select>
+        </label>
+        <label>Comment
+          <textarea name="comment" rows="3" required></textarea>
+        </label>
+        <button type="submit">Post Review</button>
+      </form>
+    <% } else { %>
+      <p><a href="/auth/login">Sign in</a> to leave a review</p>
+    <% } %>
+
+    <% if (reviews && reviews.length) { %>
       <% reviews.forEach(function(r){ %>
-        <li><strong><%= r.name %></strong> - <%= r.rating %>/5<br><%= r.comment %></li>
+        <div class="review">
+          <p><strong><%= r.name %></strong> • <small><%= new Date(r.created_at).toLocaleString() %></small></p>
+          <p>Rating: <%= r.rating %> / 5</p>
+          <p><%= r.comment %></p>
+
+          <!-- reply list (if any) -->
+          <% if (r.replies && r.replies.length) { %>
+            <% r.replies.forEach(function(rep){ %>
+              <div class="reply">
+                <p><strong><%= rep.name %></strong> • <small><%= new Date(rep.created_at).toLocaleString() %></small></p>
+                <p><%= rep.comment %></p>
+              </div>
+            <% }) %>
+          <% } %>
+
+          <!-- reply form -->
+          <% if (user) { %>
+            <form class="review-form" method="POST" action="/reviews/reply" style="margin-top:8px;">
+              <input type="hidden" name="listing_id" value="<%= listing.id %>">
+              <input type="hidden" name="parent_id" value="<%= r.id %>">
+              <label>Reply
+                <textarea name="comment" rows="2" required></textarea>
+              </label>
+              <button type="submit">Reply</button>
+            </form>
+          <% } %>
+
+        </div>
       <% }) %>
-    </ul>
-  <% } else { %>
-    <p>No reviews yet.</p>
-  <% } %>
+    <% } else { %>
+      <p>No reviews yet. Be the first to review.</p>
+    <% } %>
+  </section>
 </section>

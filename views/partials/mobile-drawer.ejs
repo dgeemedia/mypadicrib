@@ -1,0 +1,29 @@
+<!-- views/partials/mobile-drawer.ejs -->
+<div id="mobile-drawer" class="mobile-drawer" aria-hidden="true">
+  <div class="mobile-drawer-inner">
+    <button id="drawer-close" class="drawer-close">✕</button>
+    <nav class="mobile-nav">
+      <a href="/">Home</a>
+      <a href="/listings">Listings</a>
+      <% if (!user) { %>
+        <a href="/auth/login">Login</a>
+        <a href="/auth/signup">Sign up</a>
+      <% } else { %>
+        <% if (user.role === 'admin' || user.role === 'staff') { %>
+          <a href="/admin">Admin Dashboard</a>
+        <% } %>
+        <% if (user.role === 'owner') { %>
+          <a href="/owner/dashboard">Owner Dashboard</a>
+          <a href="/listings/new">Create listing</a>
+        <% } %>
+        <a href="/auth/logout">Logout</a>
+      <% } %>
+    </nav>
+
+    <div class="mobile-footer">
+      <p>© <%= new Date().getFullYear() %> mypadiCrib</p>
+    </div>
+  </div>
+</div>
+
+<button id="drawer-open" class="drawer-open" aria-label="Open menu">☰</button>

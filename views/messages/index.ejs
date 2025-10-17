@@ -1,0 +1,37 @@
+<!--views/messages/index.ejs-->
+<section class="container">
+  <h2>Messages</h2>
+  <section>
+    <h3>Compose</h3>
+    <form method="POST" action="/messages">
+      <label>To (user id)
+        <input name="to_user_id" type="number" required>
+      </label>
+      <label>Subject
+        <input name="subject" required>
+      </label>
+      <label>Message
+        <textarea name="body" rows="3" required></textarea>
+      </label>
+      <button type="submit">Send</button>
+    </form>
+  </section>
+
+  <hr>
+
+  <section>
+    <h3>Conversations</h3>
+    <% if (conversations && conversations.length) { %>
+      <ul>
+        <% conversations.forEach(c => { %>
+          <li>
+            <a href="/messages/<%= c.id %>"><%= c.subject || ('Conversation #' + c.id) %></a>
+            <small> — updated <%= new Date(c.last_message_at).toLocaleString() %></small>
+          </li>
+        <% }) %>
+      </ul>
+    <% } else { %>
+      <p>No conversations yet.</p>
+    <% } %>
+  </section>
+</section>

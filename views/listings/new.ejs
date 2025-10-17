@@ -1,14 +1,39 @@
 <!-- views/listings/new.ejs -->
-<section>
+<section class="container">
   <h2>Create Listing</h2>
   <form method="POST" action="/listings/new" enctype="multipart/form-data">
-    <label>Title<input type="text" name="title" required></label><br>
-    <label>Description<textarea name="description"></textarea></label><br>
-    <label>State<input type="text" name="state"></label><br>
-    <label>LGA<input type="text" name="lga"></label><br>
-    <label>Address<input type="text" name="address"></label><br>
-    <label>Price<input type="number" name="price" step="0.01"></label><br>
-    <label>Images (up to 4)<input type="file" name="images" accept="image/*" multiple></label><br>
+    <label>Title
+      <input type="text" name="title" required>
+    </label>
+
+    <label>Description
+      <textarea name="description" rows="4"></textarea>
+    </label>
+
+    <label>State
+      <select id="state-select" name="state" required></select>
+    </label>
+
+    <label>LGA
+      <select id="lga-select" name="lga" required></select>
+    </label>
+
+    <label>Address
+      <input type="text" name="address">
+    </label>
+
+    <label>Price (per night)
+      <input type="number" name="price" step="0.01" required>
+    </label>
+
+    <input type="hidden" name="MAX_IMAGE_MB" value="<%= process.env.MAX_IMAGE_MB || 5 %>">
+
+    <label>Images (up to 4)
+      <input type="file" name="images" accept="image/*" multiple>
+      <small>Max <%= process.env.MAX_IMAGE_MB || 5 %> MB per image.</small>
+    </label>
+
     <button type="submit">Create</button>
   </form>
 </section>
+

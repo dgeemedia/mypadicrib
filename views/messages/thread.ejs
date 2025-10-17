@@ -1,0 +1,23 @@
+<!--views/messages/thread.ejs-->
+<section class="container">
+  <h2>Conversation</h2>
+  <div>
+    <% if (messages && messages.length) { %>
+      <% messages.forEach(m => { %>
+        <div style="border:1px solid #eee;padding:8px;margin-bottom:8px;">
+          <p><strong><%= m.sender_name || 'Unknown' %></strong> <small><%= new Date(m.created_at).toLocaleString() %></small></p>
+          <p><%= m.body %></p>
+        </div>
+      <% }) %>
+    <% } else { %>
+      <p>No messages yet.</p>
+    <% } %>
+  </div>
+
+  <form method="POST" action="/messages/<%= conversationId %>">
+    <label>Reply
+      <textarea name="body" rows="3" required></textarea>
+    </label>
+    <button type="submit">Send Reply</button>
+  </form>
+</section>

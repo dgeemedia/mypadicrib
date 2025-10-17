@@ -1,54 +1,59 @@
 <!-- views/index.ejs -->
-<section>
-  <h1>Welcome to mypadiCrib</h1>
-  <p>Find shortlets across Nigerian states and LGAs.</p>
-  <% if (!user) { %>
-    <p><a href="/auth/signup">Create an account</a> or <a href="/auth/login">login</a> to view listings.</p>
-  <% } else { %>
-    <p><a href="/listings">Browse listings</a></p>
-  <% } %>
-</section>
+<section class="container">
+  <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+    <div>
+      <h1 style="margin:0">mypadiCrib</h1>
+      <p style="margin:4px 0;color:var(--muted)">Find shortlets across Nigerian states and LGAs</p>
+    </div>
+    <div>
+      <a class="button" href="/listings">Browse all</a>
+    </div>
+  </header>
 
-<section>
-  <h2>Listings</h2>
-  <% if (listings && listings.length) { %>
-    <ul class="listings" style="list-style:none;padding:0;">
-      <% listings.forEach(function(l){ %>
-        <li style="border:1px solid #ddd; padding:12px; margin:12px 0;">
-          <div style="display:flex;gap:12px;align-items:flex-start;">
-            <div>
-              <% if (l.image_path) { %>
-                <img src="<%= l.image_path %>" width="200" alt="listing image">
+  <section>
+    <h2>Featured listings</h2>
+
+    <% if (listings && listings.length) { %>
+      <div class="listing-grid">
+        <% listings.forEach(function(l){ 
+             // ensure l.images is an array of image paths (controller can attach), fallback to [l.image_path]
+             const imgs = (l.images && l.images.length) ? l.images.map(i=>i.image_path) : (l.image_path ? [l.image_path] : []);
+        %>
+          <article class="card" data-images='<%= JSON.stringify(imgs) %>'>
+            <div class="thumb">
+              <% if (imgs && imgs.length) { %>
+                <img src="<%= imgs[0] %>" alt="thumb">
               <% } else { %>
-                <div style="width:200px;height:140px;background:#eee;display:flex;align-items:center;justify-content:center;">No Image</div>
+                <div style="padding:12px;color:#888">No Image</div>
               <% } %>
             </div>
 
-            <div style="flex:1;">
+            <div class="listing-meta">
               <h3><a href="/listings/<%= l.id %>"><%= l.title %></a></h3>
-              <p><%= l.description %></p>
-              <p><strong>Address:</strong> <%= l.address || '' %> — <%= l.state || '' %>, <%= l.lga || '' %></p>
-              <p><strong>Price per night:</strong> &#8358;<%= l.price %></p>
-
-              <% if (user) { %>
-                <% if (user.id !== l.owner_id) { %>
-                  <form method="GET" action="/payments/checkout" style="display:inline;">
-                    <input type="hidden" name="listingId" value="<%= l.id %>">
-                    <button type="submit">Book / Checkout</button>
-                  </form>
+              <p style="color:var(--muted); font-size:14px"><%= l.description ? (l.description.length > 120 ? l.description.slice(0,120) + '…' : l.description) : '' %></p>
+              <p style="margin-top:6px"><strong>Address:</strong> <%= l.address || '' %> — <%= l.state || '' %>, <%= l.lga || '' %></p>
+              <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+                <div class="price">&#8358;<%= l.price %> / night</div>
+                <% if (user) { %>
+                  <% if (user.id !== l.owner_id) { %>
+                    <form method="GET" action="/payments/checkout" style="margin-left:auto;">
+                      <input type="hidden" name="listingId" value="<%= l.id %>">
+                      <button type="submit">Book</button>
+                    </form>
+                  <% } else { %>
+                    <span style="margin-left:auto;color:var(--muted)">Your listing</span>
+                  <% } %>
                 <% } else { %>
-                  <span style="color:#888">This is your listing</span>
+                  <a href="/auth/login" style="margin-left:auto" class="button">Login to book</a>
                 <% } %>
-              <% } else { %>
-                <a href="/auth/login">Login to book</a>
-              <% } %>
+              </div>
             </div>
-          </div>
-        </li>
-      <% }) %>
-    </ul>
-  <% } else { %>
-    <p>No listings yet.</p>
-  <% } %>
+          </article>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <p>No listings yet.</p>
+    <% } %>
+  </section>
 </section>
 
