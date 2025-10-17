@@ -1,0 +1,98 @@
+<!--views/admin/dashboard.ejs-->
+<section>
+  <h1>Admin Dashboard</h1>
+
+  <% if (pending && pending.length) { %>
+    <section>
+      <h2>Pending Listings</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Title</th>
+            <th>Owner</th>
+            <th>Price (per night)</th>
+            <th>Listing Fee</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% pending.forEach(function(l, idx) { %>
+            <tr>
+              <td><%= idx + 1 %></td>
+              <td><a href="/listings/<%= l.id %>"><%= l.title %></a></td>
+              <td><%= l.owner_name || 'Unknown' %></td>
+              <td>&#8358;<%= l.price %></td>
+              <td>
+                <% if (l.listing_fee_amount && !l.listing_fee_paid) { %>
+                  <strong>₦<%= l.listing_fee_amount %></strong> (unpaid)
+                <% } else { %>
+                  <%= l.listing_fee_amount ? '₦' + l.listing_fee_amount + ' (paid)' : 'Free' %>
+                <% } %>
+              </td>
+              <td><%= new Date(l.created_at).toLocaleString() %></td>
+              <td>
+                <form method="POST" action="/admin/listings/<%= l.id %>/approve" style="display:inline">
+                  <button type="submit">Approve</button>
+                </form>
+
+                <form method="POST" action="/admin/listings/<%= l.id %>/reject" style="display:inline">
+                  <button type="submit" onclick="return confirm('Reject listing?')">Reject</button>
+                </form>
+
+                <a href="/listings/<%= l.id %>">View</a>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </section>
+  <% } else { %>
+    <p>No pending listings.</p>
+  <% } %>
+
+  <hr>
+
+  <section>
+    <h2>Create Staff Account</h2>
+    <form method="POST" action="/admin/staff/create">
+      <label>Name<br><input name="name" required></label><br>
+      <label>Email<br><input name="email" type="email" required></label><br>
+      <label>Phone<br><input name="phone"></label><br>
+      <label>Password<br><input name="password" type="password" required></label><br>
+      <button type="submit">Create Staff</button>
+    </form>
+  </section>
+
+  <hr>
+
+  <section>
+    <h2>Add Provider (Laundry / Food)</h2>
+    <form method="POST" action="/admin/providers/add">
+      <label>Type<br>
+        <select name="type" required>
+          <option value="laundry">Laundry Provider</option>
+          <option value="food">Food Vendor</option>
+        </select>
+      </label><br>
+
+      <label>Name<br><input name="name" required></label><br>
+      <label>Phone<br><input name="phone"></label><br>
+      <label>Email<br><input name="email" type="email"></label><br>
+
+      <button type="submit">Add Provider</button>
+    </form>
+  </section>
+
+  <hr>
+
+  <section>
+    <h2>Admin Quick Links</h2>
+    <ul>
+      <li><a href="/admin">Refresh dashboard</a></li>
+      <li><a href="/owner/dashboard">Go to owner dashboard</a></li>
+      <li><a href="/listings">Browse listings (approved)</a></li>
+    </ul>
+  </section>
+</section>

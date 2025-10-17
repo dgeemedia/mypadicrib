@@ -1,0 +1,20 @@
+{
+  "Lagos": [
+    "Ikeja",
+    "Eti-Osa",
+    "Surulere",
+    "Alimosho"
+  ],
+  "Rivers": [
+    "Obio-Akpor",
+    "Port Harcourt",
+    "Eleme",
+    "Okrika"
+  ],
+  "FCT": [
+    "Gwagwalada",
+    "Kubwa",
+    "Asokoro",
+    "Maitama"
+  ]
+}

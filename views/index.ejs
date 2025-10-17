@@ -1,0 +1,54 @@
+<!-- views/index.ejs -->
+<section>
+  <h1>Welcome to mypadiCrib</h1>
+  <p>Find shortlets across Nigerian states and LGAs.</p>
+  <% if (!user) { %>
+    <p><a href="/auth/signup">Create an account</a> or <a href="/auth/login">login</a> to view listings.</p>
+  <% } else { %>
+    <p><a href="/listings">Browse listings</a></p>
+  <% } %>
+</section>
+
+<section>
+  <h2>Listings</h2>
+  <% if (listings && listings.length) { %>
+    <ul class="listings" style="list-style:none;padding:0;">
+      <% listings.forEach(function(l){ %>
+        <li style="border:1px solid #ddd; padding:12px; margin:12px 0;">
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div>
+              <% if (l.image_path) { %>
+                <img src="<%= l.image_path %>" width="200" alt="listing image">
+              <% } else { %>
+                <div style="width:200px;height:140px;background:#eee;display:flex;align-items:center;justify-content:center;">No Image</div>
+              <% } %>
+            </div>
+
+            <div style="flex:1;">
+              <h3><a href="/listings/<%= l.id %>"><%= l.title %></a></h3>
+              <p><%= l.description %></p>
+              <p><strong>Address:</strong> <%= l.address || '' %> — <%= l.state || '' %>, <%= l.lga || '' %></p>
+              <p><strong>Price per night:</strong> &#8358;<%= l.price %></p>
+
+              <% if (user) { %>
+                <% if (user.id !== l.owner_id) { %>
+                  <form method="GET" action="/payments/checkout" style="display:inline;">
+                    <input type="hidden" name="listingId" value="<%= l.id %>">
+                    <button type="submit">Book / Checkout</button>
+                  </form>
+                <% } else { %>
+                  <span style="color:#888">This is your listing</span>
+                <% } %>
+              <% } else { %>
+                <a href="/auth/login">Login to book</a>
+              <% } %>
+            </div>
+          </div>
+        </li>
+      <% }) %>
+    </ul>
+  <% } else { %>
+    <p>No listings yet.</p>
+  <% } %>
+</section>
+

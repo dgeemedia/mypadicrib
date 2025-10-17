@@ -1,0 +1,30 @@
+<!-- views/partials/header.ejs -->
+<header class="site-header">
+  <nav>
+    <a href="/">mypadiCrib</a>
+    <a href="/">Home</a>
+    <a href="/listings">Listings</a>
+
+    <% if (!user) { %>
+      <a href="/auth/login">Login</a>
+      <a href="/auth/signup">Sign up</a>
+    <% } else { %>
+      <% if (user.role === 'admin' || user.role === 'staff') { %>
+        <a href="/admin">Admin Dashboard</a>
+      <% } %>
+
+      <% if (user.role === 'owner') { %>
+        <a href="/owner/dashboard">Owner Dashboard</a>
+        <a href="/listings/new">Create listing</a>
+      <% } %>
+
+      <% if (user.role === 'user') { %>
+        <a href="/listings">Browse listings</a>
+      <% } %>
+
+      <span>Welcome, <%= user.name %></span>
+      <a href="/auth/logout">Logout</a>
+    <% } %>
+  </nav>
+</header>
+

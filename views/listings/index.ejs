@@ -1,0 +1,18 @@
+<!-- views/listings/index.ejs -->
+<section>
+  <h2>Listings</h2>
+  <% if (listings && listings.length) { %>
+    <ul class="listings">
+      <% listings.forEach(function(l){ %>
+        <li>
+          <h3><a href="/listings/<%= l.id %>"><%= l.title %></a></h3>
+          <p><%= l.description %></p>
+          <p>Price: &#8358;<%= l.price %></p>
+        </li>
+      <% }) %>
+    </ul>
+  <% } else { %>
+    <p>No listings yet.</p>
+  <% } %>
+  <p><a href="/listings/new">Create a listing</a></p>
+</section>

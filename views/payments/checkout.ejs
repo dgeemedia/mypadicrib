@@ -1,0 +1,11 @@
+<!-- views/payments/checkout.ejs -->
+<section>
+  <h2>Checkout</h2>
+  <form method="POST" action="/payments/initiate">
+    <input type="hidden" name="listingId" value="<%= listingId %>">
+    <label>Start Date<input type="date" name="startDate"></label><br>
+    <label>End Date<input type="date" name="endDate"></label><br>
+    <label><input type="checkbox" name="laundry"> Add laundry service</label><br>
+    <button type="submit">Pay / Book (stub)</button>
+  </form>
+</section>

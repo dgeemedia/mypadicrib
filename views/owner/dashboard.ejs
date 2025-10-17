@@ -1,0 +1,98 @@
+<!--views/owner/dashboard.ejs-->
+<section>
+  <h1>Owner Dashboard</h1>
+
+  <p>Welcome, <%= user ? user.name : 'Owner' %>. Manage your listings below.</p>
+
+  <% if (listings && listings.length) { %>
+    <section>
+      <h2>Your Listings</h2>
+      <ul class="owner-listings" style="list-style:none; padding:0;">
+        <% listings.forEach(function(l) { %>
+          <li style="border:1px solid #ddd; padding:12px; margin-bottom:12px;">
+            <h3><a href="/listings/<%= l.id %>"><%= l.title %></a></h3>
+            <p><%= l.description %></p>
+            <p><strong>Price (per night):</strong> &#8358;<%= l.price %></p>
+            <p>
+              <strong>Status:</strong>
+              <% if (l.status === 'pending') { %>
+                <span>Pending verification</span>
+              <% } else if (l.status === 'approved') { %>
+                <span>Approved</span>
+              <% } else if (l.status === 'rejected') { %>
+                <span>Rejected</span>
+              <% } else { %>
+                <span><%= l.status %></span>
+              <% } %>
+            </p>
+
+            <p>
+              <strong>Listing fee:</strong>
+              <% if (l.listing_fee_amount && !l.listing_fee_paid) { %>
+                <span>₦<%= l.listing_fee_amount %> (unpaid)</span>
+                <a href="/payments/listing-fee?listingId=<%= l.id %>">Pay listing fee</a>
+              <% } else if (l.listing_fee_amount) { %>
+                <span>₦<%= l.listing_fee_amount %> (paid)</span>
+              <% } else { %>
+                <span>Free</span>
+              <% } %>
+            </p>
+
+            <section>
+              <h4>Images</h4>
+              <% if (l.image_path || l.images && l.images.length) { %>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  <% if (l.images && l.images.length) { %>
+                    <% l.images.forEach(function(img) { %>
+                      <div style="border:1px solid #ccc; padding:6px;">
+                        <img src="<%= img.image_path %>" alt="img" width="140" style="display:block; margin-bottom:6px;">
+                        <form method="POST" action="/listings/<%= l.id %>/images/<%= img.id %>/delete">
+                          <button type="submit" onclick="return confirm('Delete image?')">Delete</button>
+                        </form>
+                      </div>
+                    <% }) %>
+                  <% } else if (l.image_path) { %>
+                    <img src="<%= l.image_path %>" width="160" alt="listing image">
+                  <% } %>
+                </div>
+              <% } else { %>
+                <p>No images yet.</p>
+              <% } %>
+
+              <form method="POST" action="/listings/<%= l.id %>/images" enctype="multipart/form-data" style="margin-top:8px;">
+                <label>Upload images (up to 6)<br>
+                  <input type="file" name="images" accept="image/*" multiple>
+                </label><br>
+                <button type="submit">Upload</button>
+              </form>
+            </section>
+
+            <p style="margin-top:8px">
+              <a href="/listings/<%= l.id %>">View public listing</a>
+            </p>
+          </li>
+        <% }) %>
+      </ul>
+    </section>
+  <% } else { %>
+    <p>You have no listings yet. <a href="/listings/new">Create your first listing</a>.</p>
+  <% } %>
+
+  <hr>
+
+  <section>
+    <h2>Create a new listing</h2>
+    <p><a href="/listings/new">Go to the create listing form</a></p>
+  </section>
+
+  <hr>
+
+  <section>
+    <h2>Owner Quick Links</h2>
+    <ul>
+      <li><a href="/owner/dashboard">Refresh</a></li>
+      <li><a href="/listings/new">Create listing</a></li>
+      <li><a href="/listings">Browse approved listings</a></li>
+    </ul>
+  </section>
+</section>

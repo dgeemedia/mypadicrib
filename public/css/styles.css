@@ -1,0 +1,12 @@
+body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+.container { max-width: 900px; margin: 0 auto; padding: 20px; }
+header nav { background:#2c7; padding:10px; }
+header nav a { margin-right:10px; color:#000; text-decoration:none; font-weight:600; }
+.site-footer { background:#f4f4f4; padding:10px; text-align:center; margin-top:20px; }
+.flash { padding:10px; margin-bottom:10px; border-radius:4px; }
+.flash.success { background:#e0ffea; }
+.flash.error { background:#ffdede; }
+.listings { list-style:none; padding:0; }
+.listings li { border:1px solid #ddd; padding:10px; margin:10px 0; }
+.images img { margin-right:10px; }
+

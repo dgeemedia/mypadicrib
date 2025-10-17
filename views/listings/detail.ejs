@@ -1,0 +1,40 @@
+<!-- views/listings/detail.ejs -->
+<section>
+  <h2><%= listing.title %></h2>
+  <p><%= listing.description %></p>
+  <p>Address: <%= listing.address || '' %> - <%= listing.state || '' %>, <%= listing.lga || '' %></p>
+  <p>Price per night: &#8358;<%= listing.price %></p>
+
+  <% if (user) { %>
+    <% if (user.id !== listing.owner_id) { %>
+      <form method="GET" action="/payments/checkout">
+        <input type="hidden" name="listingId" value="<%= listing.id %>">
+        <button type="submit">Book / Proceed to Checkout</button>
+      </form>
+    <% } else { %>
+      <p style="color:#777;">This is your listing.</p>
+    <% } %>
+  <% } else { %>
+    <p><a href="/auth/login">Login</a> to book this listing</p>
+  <% } %>
+
+  <h3>Images</h3>
+  <% if (images && images.length) { %>
+    <div class="images">
+      <% images.forEach(function(img){ %>
+        <img src="<%= img.image_path %>" alt="listing image" width="200">
+      <% }) %>
+    </div>
+  <% } %>
+
+  <h3>Reviews</h3>
+  <% if (reviews && reviews.length) { %>
+    <ul>
+      <% reviews.forEach(function(r){ %>
+        <li><strong><%= r.name %></strong> - <%= r.rating %>/5<br><%= r.comment %></li>
+      <% }) %>
+    </ul>
+  <% } else { %>
+    <p>No reviews yet.</p>
+  <% } %>
+</section>
