@@ -23,6 +23,12 @@
     <!-- Footer -->
     <%- include('../partials/footer') %>
 
+  <script>
+  // output raw JSON so EJS doesn't html-escape characters (no &amp; etc)
+  window.APP_USER = <%- JSON.stringify(user ? { id: user.id, name: user.name, role: user.role } : null) %>;
+  window.APP_CONFIG = { MAX_IMAGE_MB: <%- JSON.stringify(process.env.MAX_IMAGE_MB || 5) %> };
+  </script>
+
     <!-- Client scripts -->
     <script src="/js/main.js" defer></script>
   </body>

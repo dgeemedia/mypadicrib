@@ -20,7 +20,7 @@
              const stats = l.reviewStats || {count:0, avg:0};
              const latest = l.latestReview || null;
         %>
-<article class="card" data-images='<%= JSON.stringify(imgs) %>'>
+<article class="card" data-images='<%- JSON.stringify(imgs) %>'>
   <div class="thumb">
     <a href="/listings/<%= l.id %>" aria-label="View <%= l.title %> details">
       <% if (imgs && imgs.length) { %>
@@ -66,6 +66,9 @@
                   <% if (user.id !== l.owner_id) { %>
                     <form method="GET" action="/payments/checkout" style="margin-left:auto;">
                       <input type="hidden" name="listingId" value="<%= l.id %>">
+                      <button type="button" class="view-comments-btn" data-listing-id="<%= l.id %>" data-listing-title="<%= l.title %>">
+                        View comments (<%= l.reviewStats ? l.reviewStats.count : 0 %>)
+                      </button>
                       <button type="submit">Book</button>
                     </form>
                   <% } else { %>

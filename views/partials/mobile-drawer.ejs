@@ -1,43 +1,49 @@
-<!-- views/partials/mobile-drawer.ejs -->
+<!-- views/partials/mobile-drawer.ejs (updated) -->
 <div id="mobile-drawer" class="mobile-drawer" aria-hidden="true">
-  <div class="mobile-drawer-panel" role="dialog" aria-modal="true" aria-label="Mobile menu">
-    <!-- Close button (big and visible) -->
+<div class="mobile-drawer-panel" role="dialog" aria-modal="true" aria-label="Mobile menu">
+<!-- Close button (big and visible) -->
 <button id="drawer-close" class="drawer-close" aria-label="Close menu">
-  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <path fill="currentColor" d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7A1 1 0 0 0 5.7 7.11L10.59 12l-4.9 4.89a1 1 0 1 0 1.41 1.41L12 13.41l4.89 4.9a1 1 0 0 0 1.41-1.41L13.41 12l4.9-4.89a1 1 0 0 0 0-1.4z"/>
-  </svg>
+<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+<path fill="currentColor" d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7A1 1 0 0 0 5.7 7.11L10.59 12l-4.9 4.89a1 1 0 1 0 1.41 1.41L12 13.41l4.89 4.9a1 1 0 0 0 1.41-1.41L13.41 12l4.9-4.89a1 1 0 0 0 0-1.4z"/>
+</svg>
 </button>
 
 
-    <nav class="mobile-nav" aria-label="Mobile main navigation">
-      <a href="/"><i class="fa-solid fa-house"></i><span>Home</span></a>
-      <a href="/listings"><i class="fa-solid fa-list"></i><span>Listings</span></a>
 
-      <% if (!user) { %>
-        <a href="/auth/login"><i class="fa-solid fa-sign-in-alt"></i><span>Login</span></a>
-        <a href="/auth/signup"><i class="fa-solid fa-user-plus"></i><span>Sign up</span></a>
-      <% } else { %>
-        <% if (user.role === 'admin' || user.role === 'staff') { %>
-          <a href="/admin"><i class="fa-solid fa-gear"></i><span>Admin</span></a>
-        <% } %>
 
-        <% if (user.role === 'owner') { %>
-          <a href="/owner/dashboard"><i class="fa-solid fa-house-lock"></i><span>Owner Dashboard</span></a>
-          <a href="/listings/new"><i class="fa-solid fa-plus-circle"></i><span>Create Listing</span></a>
-        <% } %>
+<nav class="mobile-nav" aria-label="Mobile main navigation">
+<a href="/"><i class="fa-solid fa-house"></i><span>Home</span></a>
+<a href="/listings"><i class="fa-solid fa-list"></i><span>Listings</span></a>
 
-        <% if (user.role === 'user') { %>
-          <a href="/listings"><i class="fa-solid fa-magnifying-glass"></i><span>Browse</span></a>
-        <% } %>
 
-        <a href="/auth/logout"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></a>
-      <% } %>
-    </nav>
+<% if (!user) { %>
+<a href="/auth/login"><i class="fa-solid fa-sign-in-alt"></i><span>Login</span></a>
+<a href="/auth/signup"><i class="fa-solid fa-user-plus"></i><span>Sign up</span></a>
+<% } else { %>
+<% if (user.role === 'admin' || user.role === 'staff') { %>
+<a href="/admin"><i class="fa-solid fa-gear"></i><span>Admin</span></a>
+<% } %>
 
-    <div class="mobile-footer">
-      <p>© <%= new Date().getFullYear() %> mypadiCrib</p>
-    </div>
-  </div>
+
+<% /* Show owner links to both owner and regular user roles */ %>
+<% if (user.role === 'owner' || user.role === 'user') { %>
+<a id="mobile-owner-dashboard" href="/owner/dashboard"><i class="fa-solid fa-house-lock"></i><span>Owner Dashboard</span></a>
+<a id="mobile-create-listing" href="/listings/new"><i class="fa-solid fa-plus-circle"></i><span>Create Listing</span></a>
+<% } %>
+
+
+<% if (user.role === 'user') { %>
+<a href="/listings"><i class="fa-solid fa-magnifying-glass"></i><span>Browse</span></a>
+<% } %>
+
+
+<a href="/auth/logout"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></a>
+<% } %>
+</nav>
+
+
+<div class="mobile-footer">
+<p>© <%= new Date().getFullYear() %> mypadiCrib</p>
 </div>
-
-
+</div>
+</div>

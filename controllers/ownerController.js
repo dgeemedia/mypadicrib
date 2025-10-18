@@ -13,7 +13,7 @@ exports.dashboard = async (req, res) => {
       return { ...l, images };
     }));
 
-    return res.render('owner/dashboard', { listings: enhanced });
+    return res.render('owner/dashboard', { listings: enhanced, user: req.user });
   } catch (err) {
     console.error('owner.dashboard error', err);
     req.flash('error', 'Unable to load your dashboard');

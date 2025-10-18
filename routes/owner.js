@@ -4,6 +4,6 @@ const router = express.Router();
 const ownerController = require('../controllers/ownerController');
 const { ensureRole } = require('../middleware/roles');
 
-router.get('/dashboard', ensureRole(['owner']), ownerController.dashboard);
+router.get('/dashboard', ensureRole(['user', 'owner']), ownerController.dashboard);
 
 module.exports = router;

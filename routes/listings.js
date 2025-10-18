@@ -8,13 +8,13 @@ const { ensureRole, ensureOwnerOfListing } = require('../middleware/roles');
 // public listing index (approved listings)
 router.get('/', listingController.index);
 
-// create listing (owner only) — make sure /new is before /:id
-router.get('/new', ensureRole(['owner']), listingController.createForm);
-router.post('/new', ensureRole(['owner']), upload.array('images', 4), listingController.createPost);
+// create listing (authenticated users can create - owners and users share signup)
+router.get('/new', ensureRole(['user', 'owner']), listingController.createForm);
+router.post('/new', ensureRole(['user', 'owner']), upload.array('images', 4), listingController.createPost);
 
-// add / delete images (owner only)
-router.post('/:id/images', ensureRole(['owner']), ensureOwnerOfListing(), upload.array('images', 6), listingController.addImages);
-router.post('/:id/images/:imgId/delete', ensureRole(['owner']), ensureOwnerOfListing(), listingController.deleteImage);
+// add / delete images (user/owner only)
+router.post('/:id/images', ensureRole(['user', 'owner']), ensureOwnerOfListing(), upload.array('images', 6), listingController.addImages);
+router.post('/:id/images/:imgId/delete', ensureRole(['user', 'owner']), ensureOwnerOfListing(), listingController.deleteImage);
 
 // show listing detail (public)
 router.get('/:id', listingController.show);

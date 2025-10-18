@@ -46,6 +46,7 @@
   <section class="reviews" style="margin-top:20px;">
     <h3>Reviews</h3>
     <!-- (your existing review markup here) -->
+    <button type="button" class="view-comments-btn" data-listing-id="<%= listing.id %>" data-listing-title="<%= listing.title %>">Open comments</button>
     <% if (user) { %>
       <form class="review-form" method="POST" action="/reviews">
         <input type="hidden" name="listing_id" value="<%= listing.id %>">

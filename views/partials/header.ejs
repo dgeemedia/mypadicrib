@@ -1,41 +1,43 @@
-<!--views/partials/header.ejs-->
+<!-- views/partials/header.ejs (updated) -->
 <header class="site-header" role="banner">
-  <div class="header-inner">
-    <a class="brand" href="/">mypadiCrib</a>
+<div class="header-inner">
+<a class="brand" href="/">mypadiCrib</a>
 
-    <!-- main nav (desktop) -->
-    <div class="main-nav">
-      <a href="/">Home</a>
-      <a href="/listings">Listings</a>
-    </div>
 
-    <!-- right side links (desktop) -->
-    <div class="auth-links">
-      <% if (!user) { %>
-        <a href="/auth/login">Login</a>
-        <a href="/auth/signup">Sign up</a>
-      <% } else { %>
-        <% if (user.role === 'admin' || user.role === 'staff') { %>
-          <a href="/admin">Admin Dashboard</a>
-        <% } %>
+<!-- main nav (desktop) -->
+<div class="main-nav">
+<a href="/">Home</a>
+<a href="/listings">Listings</a>
+</div>
 
-        <% if (user.role === 'owner') { %>
-          <a href="/owner/dashboard">Owner Dashboard</a>
-          <a href="/listings/new">Create listing</a>
-        <% } %>
 
-        <% if (user.role === 'user') { %>
-          <a href="/listings">Browse listings</a>
-        <% } %>
+<!-- right side links (desktop) -->
+<div class="auth-links">
+<% if (!user) { %>
+<a href="/auth/login">Login</a>
+<a href="/auth/signup">Sign up</a>
+<% } else { %>
+<% if (user.role === 'admin' || user.role === 'staff') { %>
+<a href="/admin">Admin Dashboard</a>
+<% } %>
 
-        <span class="welcome">Welcome, <%= user.name %></span>
-        <a href="/auth/logout">Logout</a>
-      <% } %>
-    </div>
 
-    <!-- hamburger for mobile (kept last so absolute-positioning places it at far right) -->
-    <button id="drawer-open" class="drawer-open" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-drawer">
-      <span class="hamburger-icon" aria-hidden="true">☰</span>
-    </button>
-  </div>
+<% /* Allow both 'owner' and regular 'user' to see Owner Dashboard/Create Listing links */ %>
+<% if (user.role === 'owner' || user.role === 'user') { %>
+<a id="owner-dashboard-link" href="/owner/dashboard">Owner Dashboard</a>
+<a id="create-listing-link" href="/listings/new">Create listing</a>
+<% } %>
+
+
+<span class="welcome">Welcome, <%= user.name %></span>
+<a href="/auth/logout">Logout</a>
+<% } %>
+</div>
+
+
+<!-- hamburger for mobile (kept last so absolute-positioning places it at far right) -->
+<button id="drawer-open" class="drawer-open" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-drawer">
+<span class="hamburger-icon" aria-hidden="true">☰</span>
+</button>
+</div>
 </header>
