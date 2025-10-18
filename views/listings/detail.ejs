@@ -1,15 +1,27 @@
 <!-- views/listings/detail.ejs -->
-<section class="container">
+<section class="container listing-detail">
   <article class="card" style="align-items:flex-start;">
-    <div class="thumb" style="width:360px;height:260px;">
+    <div class="gallery-area" style="width:360px;">
       <% if (images && images.length) { %>
-        <img src="<%= images[0].image_path %>" alt="primary">
+        <div class="gallery-main-wrap" style="position:relative;">
+          <img id="gallery-main" src="<%= images[0].image_path %>" alt="primary" style="width:100%;height:260px;object-fit:cover;border-radius:8px;cursor:zoom-in">
+        </div>
       <% } else { %>
-        <div style="padding:12px;color:#888">No Image</div>
+        <div style="width:100%;height:260px;background:#efefef;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#888">No Image</div>
+      <% } %>
+
+      <% if (images && images.length > 1) { %>
+        <div class="gallery-thumbs" id="gallery-thumbs" style="display:flex;gap:8px;overflow-x:auto;padding-top:8px;margin-top:8px;">
+          <% images.forEach(function(img, idx){ %>
+            <div class="thumb-item" data-src="<%= img.image_path %>" data-index="<%= idx %>" tabindex="0" style="flex:0 0 auto;border-radius:6px;overflow:hidden;border:2px solid transparent;cursor:pointer;">
+              <img src="<%= img.image_path %>" alt="thumb-<%= idx %>" style="width:120px;height:80px;object-fit:cover;display:block;">
+            </div>
+          <% }) %>
+        </div>
       <% } %>
     </div>
 
-    <div style="flex:1;">
+    <div style="flex:1; margin-left:16px;">
       <h2><%= listing.title %></h2>
       <p style="color:var(--muted)"><%= listing.description %></p>
       <p><strong>Address:</strong> <%= listing.address || '' %> — <%= listing.state || '' %>, <%= listing.lga || '' %></p>
@@ -30,24 +42,10 @@
     </div>
   </article>
 
-  <% if (images && images.length > 1) { %>
-    <div style="margin-top:12px;">
-      <h4>Gallery</h4>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <% images.forEach(function(img){ %>
-          <div style="width:110px;height:80px;overflow:hidden;border-radius:8px;cursor:pointer">
-            <img src="<%= img.image_path %>" style="width:100%;height:100%;object-fit:cover" alt="thumb">
-          </div>
-        <% }) %>
-      </div>
-      <small>Click an image to view full gallery.</small>
-    </div>
-  <% } %>
-
-  <section class="reviews">
+  <!-- Reviews section (unchanged) -->
+  <section class="reviews" style="margin-top:20px;">
     <h3>Reviews</h3>
-
-    <!-- Add Review (only authenticated users) -->
+    <!-- (your existing review markup here) -->
     <% if (user) { %>
       <form class="review-form" method="POST" action="/reviews">
         <input type="hidden" name="listing_id" value="<%= listing.id %>">
@@ -72,10 +70,7 @@
     <% if (reviews && reviews.length) { %>
       <% reviews.forEach(function(r){ %>
         <div class="review">
-          <p>
-            <strong><%= r.name %></strong> • <small><%= new Date(r.created_at).toLocaleString() %></small>
-          </p>
-
+          <p><strong><%= r.name %></strong> • <small><%= new Date(r.created_at).toLocaleString() %></small></p>
           <p aria-hidden="true">
             <% for (let i=1;i<=5;i++) { %>
               <% if (i <= r.rating) { %>
@@ -86,10 +81,7 @@
             <% } %>
             <small style="color:var(--muted)"> — <%= r.rating %>/5</small>
           </p>
-
           <p><%= r.comment %></p>
-
-          <!-- reply list (if any) -->
           <% if (r.replies && r.replies.length) { %>
             <% r.replies.forEach(function(rep){ %>
               <div class="reply">
@@ -99,7 +91,6 @@
             <% }) %>
           <% } %>
 
-          <!-- reply form -->
           <% if (user) { %>
             <form class="review-form" method="POST" action="/reviews/reply" style="margin-top:8px;">
               <input type="hidden" name="listing_id" value="<%= listing.id %>">
@@ -117,3 +108,11 @@
     <% } %>
   </section>
 </section>
+
+<!-- Lightbox modal with Prev / Next buttons -->
+<div id="lightbox" class="lightbox" aria-hidden="true" style="display:none;">
+  <button id="lightbox-close" class="lightbox-close" aria-label="Close">✕</button>
+  <button id="lightbox-prev" class="lightbox-nav" aria-label="Previous image">‹</button>
+  <img id="lightbox-img" src="" alt="large view">
+  <button id="lightbox-next" class="lightbox-nav" aria-label="Next image">›</button>
+</div>

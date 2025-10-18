@@ -22,14 +22,18 @@ body{
   padding:0 16px;
 }
 
-/* header */
-.site-header{
-  background:#fff;
-  border-bottom:1px solid #eee;
-  position:sticky;
-  top:0;
-  z-index:30;
+/* header layout */
+.site-header { background:#fff; border-bottom:1px solid #eee; position:sticky; top:0; z-index:100; }
+.header-inner {
+  max-width:1200px;
+  margin:0 auto;
+  padding:12px 16px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  position:relative; /* needed for absolute hamburger */
 }
+
 .site-header nav{
   max-width:var(--max-width);
   margin:0 auto;
@@ -41,25 +45,127 @@ body{
 .site-header a{ color:var(--accent); text-decoration:none; font-weight:600; }
 .site-header span{ margin-left:auto; color:var(--muted); }
 
+/* main nav + auth links (desktop) */
+.main-nav { display:flex; gap:12px; align-items:center; }
+.auth-links { margin-left:auto; display:flex; gap:12px; align-items:center; }
+
 /* mobile drawer */
-.drawer-open{
-  display:none;
-  position:fixed; right:16px; bottom:16px;
-  background:var(--accent); color:#fff; border:none; padding:12px;border-radius:50%; font-size:20px; z-index:40;
+.mobile-drawer.open { display:flex; }
+.mobile-drawer-panel {
+  width: 320px;
+  max-width: 92%;
+  height: 100%;
+  background: #fff;
+  padding: 18px 18px 24px 18px;
+  box-shadow: -8px 0 24px rgba(0,0,0,0.12);
+  transform: translateX(100%);
+  transition: transform 260ms ease;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding-top: 56px; /* room for close button */
 }
-.mobile-drawer{
-  position:fixed; inset:0; display:none; z-index:50;
+.mobile-drawer.open .mobile-drawer-panel { transform:translateX(0); }
+
+/* Strong, visible close (X) button for mobile drawer */
+.drawer-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+
+  /* Make it clearly visible over any background */
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: #ffffff;                 /* solid white so it stands out vs rgba overlay */
+  border: 1px solid rgba(16,24,40,0.06);
+  box-shadow: 0 6px 18px rgba(2,6,23,0.12);
+  color: #111827;                      /* dark icon color for contrast */
+  font-size: 20px;                     /* icon size */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 9999;                       /* ensure it's on top of everything */
+  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+
+/* Hover/focus states to give feedback */
+.drawer-close:hover {
+  transform: translateY(-1px);
+  background: #fbfbfd;
+  box-shadow: 0 10px 24px rgba(2,6,23,0.14);
+}
+.drawer-close:active {
+  transform: translateY(0);
+}
+.drawer-close:focus {
+  outline: 3px solid rgba(99,102,241,0.12);
+  outline-offset: 2px;
+}
+
+/* If you use a font-awesome X, ensure icon inherits color */
+.drawer-close i { color: inherit; font-size: 20px; line-height: 1; }
+
+/* For very dark panels (if you later invert colors), add a reversed variant */
+.mobile-drawer-panel.dark .drawer-close {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #fff;
+  box-shadow: none;
+}
+
+.mobile-nav a {
+  display:flex;
+  gap:12px;
+  align-items:center;
+  padding:12px 8px;
+  border-radius:8px;
+  color: var(--accent);
+  text-decoration:none;
+  font-weight:600;
+  font-size:16px;
+  transition: background 120ms ease, transform 120ms ease;
+}
+.mobile-nav a:hover { background:#f6f7fb; transform: translateX(4px); color: var(--accent); }
+.mobile-nav { display:flex; flex-direction:column; gap:6px; margin-top:6px; }
+
+/* hamburger button placed absolute at the far right within header-inner */
+.drawer-open {
+  display:none; /* only show on mobile via media query */
+  position:absolute;
+  right:16px;
+  top:50%;
+  transform:translateY(-50%);
+  background:none;
+  border:none;
+  font-size:22px;
+  padding:8px;
+  cursor:pointer;
+  z-index:160;
+}
+/* mobile-drawer overlay & panel */
+.mobile-drawer {
+  position:fixed;
+  inset:0;
+  display:none;
+  z-index:150;
   background:rgba(0,0,0,0.45);
+  align-items:flex-start;
+  justify-content:flex-end;
 }
 .mobile-drawer-inner{
   width:280px; height:100%; background:#fff; padding:18px;
   box-shadow: 0 8px 20px rgba(0,0,0,0.15);
 }
-.drawer-close{ background:none; border:none; font-size:20px; float:right; margin-bottom:8px; }
-@media(max-width:900px){
-  .drawer-open{ display:block; }
-  .site-header nav > a:not(:first-child){ display:none; } /* simplify nav on mobile */
+
+@media (max-width: 900px) {
+  .main-nav, .auth-links { display: none !important; } /* hide desktop nav blocks */
+  .drawer-open { display: inline-flex; align-items:center; justify-content:center; }
 }
+
+/* small visual tweaks */
+.mobile-drawer .mobile-footer { margin-top: 18px; color:#666; font-size:14px; }
 
 /* grid listing */
 .listing-grid{
@@ -91,10 +197,23 @@ input[type="text"],input[type="email"],input[type="number"],textarea,select,inpu
   background:#fff; margin-top:6px;
 }
 
-/* gallery modal */
+/* gallery modal/listing detail */
 .gallery-modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.7); z-index:60; }
 .gallery-inner{ max-width:900px; width:100%; background:#fff; border-radius:10px; padding:12px; }
 .gallery-inner img{ width:100%; height:500px; object-fit:contain; display:block; }
+.gallery-area { max-width:380px; }
+.gallery-main-wrap img { border-radius:8px; display:block; }
+.gallery-thumbs { margin-top:8px; -webkit-overflow-scrolling:touch; }
+.thumb-item { transition: border-color .15s ease; }
+.thumb-item.active { border-color: var(--accent); }
+
+/* lightbox nav buttons */
+.lightbox { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.85); z-index:120; padding:20px; }
+.lightbox img { max-width:96%; max-height:90vh; object-fit:contain; border-radius:8px; }
+.lightbox-close { position:absolute; top:18px; right:18px; z-index:130; background:none;border:none;color:#fff;font-size:26px; cursor:pointer; }
+.lightbox-nav { position:absolute; top:50%; transform:translateY(-50%); background:rgba(0,0,0,0.4); border:none;color:#fff;font-size:40px;padding:10px 14px;border-radius:6px; cursor:pointer; }
+#lightbox-prev { left:18px; }
+#lightbox-next { right:18px; }
 
 /* reviews */
 .reviews{ margin-top:18px; }
@@ -128,3 +247,5 @@ input[type="text"],input[type="email"],input[type="number"],textarea,select,inpu
   .gallery-inner img{ height:60vh; }
 }
 
+/* highlight thumb on focus/click for accessibility */
+.thumb-item:focus, .thumb-item:hover { outline:none; border-color:var(--accent); }

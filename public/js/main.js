@@ -1,74 +1,140 @@
 // public/js/main.js
-(() => {
-  // mobile drawer
+document.addEventListener('DOMContentLoaded', () => {
+
+  // ---------- Mobile drawer (robust and DOM-safe) ----------
   const openBtn = document.getElementById('drawer-open');
   const drawer = document.getElementById('mobile-drawer');
+  const drawerPanel = drawer ? drawer.querySelector('.mobile-drawer-panel') : null;
   const closeBtn = document.getElementById('drawer-close');
-  if (openBtn && drawer) {
-    openBtn.addEventListener('click', () => { drawer.style.display='block'; drawer.setAttribute('aria-hidden','false'); });
-    closeBtn && closeBtn.addEventListener('click', () => { drawer.style.display='none'; drawer.setAttribute('aria-hidden','true'); });
-    drawer.addEventListener('click', (e) => { if (e.target === drawer) { drawer.style.display='none'; }});
+
+  function openDrawer() {
+    if (!drawer) return;
+    drawer.classList.add('open');
+    drawer.setAttribute('aria-hidden', 'false');
+    if (openBtn) openBtn.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+    // focus on close button for accessibility
+    setTimeout(() => { if (closeBtn) closeBtn.focus(); }, 120);
+  }
+  function closeDrawer() {
+    if (!drawer) return;
+    drawer.classList.remove('open');
+    drawer.setAttribute('aria-hidden', 'true');
+    if (openBtn) openBtn.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+    if (openBtn) openBtn.focus();
   }
 
-  // gallery modal (open first image preview -> show modal with all images)
-  document.addEventListener('click', (e) => {
-    const target = e.target;
-    if (target.matches('.thumb img') || target.closest('.thumb')) {
-      const card = target.closest('.card');
-      if (!card) return;
-      const imagesData = card.dataset.images; // JSON string
-      let images = [];
-      try { images = JSON.parse(imagesData || '[]'); } catch (err) { images = []; }
-      openGallery(images);
-    }
-    if (target.matches('.gallery-close')) closeGallery();
+  if (openBtn) openBtn.addEventListener('click', (e) => { e.preventDefault(); openDrawer(); });
+  if (closeBtn) closeBtn.addEventListener('click', (e) => { e.preventDefault(); closeDrawer(); });
+
+  // close when clicking outside panel
+  if (drawer) drawer.addEventListener('click', (e) => {
+    if (e.target === drawer) closeDrawer();
   });
 
-  function openGallery(images){
-    if (!images || images.length === 0) return;
-    let modal = document.getElementById('gallery-modal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'gallery-modal';
-      modal.className = 'gallery-modal';
-      modal.innerHTML = `
-        <div class="gallery-inner" role="dialog" aria-modal="true">
-          <button class="gallery-close" style="float:right;border:none;background:none;font-size:20px">✕</button>
-          <img id="gallery-main" src="" alt="gallery">
-          <div id="gallery-thumbs" style="display:flex;gap:6px;margin-top:8px;overflow:auto"></div>
-        </div>`;
-      document.body.appendChild(modal);
+  // close on Escape
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && drawer && drawer.classList.contains('open')) {
+      closeDrawer();
     }
-    const main = modal.querySelector('#gallery-main');
-    const thumbs = modal.querySelector('#gallery-thumbs');
-    main.src = images[0];
-    thumbs.innerHTML = images.map(src => `<img src="${src}" style="width:80px;height:60px;object-fit:cover;cursor:pointer" />`).join('');
-    Array.from(thumbs.children).forEach((el, idx) => {
-      el.addEventListener('click', () => main.src = images[idx]);
-    });
-    modal.style.display='flex';
-  }
-  function closeGallery(){ const m = document.getElementById('gallery-modal'); if (m) m.style.display='none'; }
+  });
 
-  // image file size validation on create listing form
-  const listingForm = document.querySelector('form[action="/listings/new"]');
-  if (listingForm) {
-    const maxMb = parseFloat((document.querySelector('input[name="MAX_IMAGE_MB"]') || {value: null}).value) || (window.MAX_IMAGE_MB || 5);
-    listingForm.addEventListener('submit', (e) => {
-      const files = listingForm.querySelector('input[type="file"][name="images"]').files;
-      if (!files) return;
-      for (let f of files) {
-        const mb = f.size / (1024*1024);
-        if (mb > maxMb) {
-          e.preventDefault();
-          alert(`Image ${f.name} is ${mb.toFixed(2)}MB — max allowed is ${maxMb}MB`);
-          return false;
-        }
-      }
+  // ---------- Listing detail gallery (unchanged logic) ----------
+  const thumbsContainer = document.getElementById('gallery-thumbs');
+  const mainImage = document.getElementById('gallery-main');
+
+  let images = [];
+  if (thumbsContainer) {
+    const thumbItems = Array.from(thumbsContainer.querySelectorAll('.thumb-item'));
+    images = thumbItems.map(t => t.getAttribute('data-src'));
+    thumbItems.forEach((t, idx) => {
+      t.addEventListener('click', () => {
+        const src = t.getAttribute('data-src');
+        if (!src) return;
+        setMainImage(src, idx);
+        thumbItems.forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        t.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+      });
+      t.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); t.click(); }});
     });
+    if (!thumbItems.some(t => t.classList.contains('active')) && thumbItems[0]) thumbItems[0].classList.add('active');
+  } else {
+    images = mainImage ? [mainImage.src] : [];
   }
 
-  // preload locations/Nigeria-state.json into create listing form
+  function setMainImage(src, index) {
+    if (!mainImage) return;
+    mainImage.src = src;
+    mainImage.dataset.currentIndex = (typeof index === 'number') ? index : images.indexOf(src);
+  }
+
+  if (mainImage) {
+    mainImage.addEventListener('click', () => {
+      const idx = parseInt(mainImage.dataset.currentIndex || '0', 10);
+      openLightbox(idx);
+    });
+  }
+
+  // ---------- Lightbox ----------
+  const lightbox = document.getElementById('lightbox');
+  const lbImg = document.getElementById('lightbox-img');
+  const lbClose = document.getElementById('lightbox-close');
+  const lbPrev = document.getElementById('lightbox-prev');
+  const lbNext = document.getElementById('lightbox-next');
+
+  let currentIndex = 0;
+  function openLightbox(startIndex) {
+    if (!lbImg || !images || images.length === 0) return;
+    currentIndex = (typeof startIndex === 'number') ? startIndex : 0;
+    currentIndex = Math.max(0, Math.min(currentIndex, images.length - 1));
+    lbImg.src = images[currentIndex];
+    if (lightbox) { lightbox.style.display = 'flex'; lightbox.setAttribute('aria-hidden', 'false'); }
+    document.body.style.overflow = 'hidden';
+  }
+  function closeLightbox() {
+    if (!lightbox) return;
+    lightbox.style.display = 'none';
+    lightbox.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+  function showNext() {
+    if (!images || images.length === 0) return;
+    currentIndex = (currentIndex + 1) % images.length;
+    lbImg.src = images[currentIndex];
+    syncActiveThumb();
+  }
+  function showPrev() {
+    if (!images || images.length === 0) return;
+    currentIndex = (currentIndex - 1 + images.length) % images.length;
+    lbImg.src = images[currentIndex];
+    syncActiveThumb();
+  }
+
+  function syncActiveThumb() {
+    if (!thumbsContainer) return;
+    const thumbItems = Array.from(thumbsContainer.querySelectorAll('.thumb-item'));
+    thumbItems.forEach((t, idx) => t.classList.toggle('active', idx === currentIndex));
+    const active = thumbItems[currentIndex];
+    if (active) active.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+    if (mainImage) mainImage.src = images[currentIndex];
+    if (mainImage) mainImage.dataset.currentIndex = currentIndex;
+  }
+
+  if (lbClose) lbClose.addEventListener('click', closeLightbox);
+  if (lbNext) lbNext.addEventListener('click', showNext);
+  if (lbPrev) lbPrev.addEventListener('click', showPrev);
+  if (lightbox) lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });
+
+  document.addEventListener('keydown', (ev) => {
+    if (!lightbox || lightbox.style.display === 'none') return;
+    if (ev.key === 'Escape') closeLightbox();
+    if (ev.key === 'ArrowRight') showNext();
+    if (ev.key === 'ArrowLeft') showPrev();
+  });
+
+  // ---------- Preload states, review AJAX, image size check ----------
   (async function loadStates(){
     const stateSel = document.getElementById('state-select');
     const lgaSel = document.getElementById('lga-select');
@@ -83,12 +149,9 @@
         const lg = data[stateSel.value] || [];
         lgaSel.innerHTML = '<option value="">Select LGA</option>' + lg.map(l => `<option value="${l}">${l}</option>`).join('');
       });
-    } catch (err) {
-      console.error('Failed to load states', err);
-    }
+    } catch (err) { console.error('Failed to load states', err); }
   })();
 
-  // AJAX submit review
   document.addEventListener('submit', async (e) => {
     const form = e.target;
     if (!form.matches('.review-form')) return;
@@ -101,7 +164,7 @@
       const res = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)});
       const data = await res.json();
       if (data.ok) {
-        location.reload(); // quick: reload to fetch new review
+        location.reload();
       } else {
         alert(data.error || 'Unable to post review');
       }
@@ -111,4 +174,21 @@
     }
   });
 
-})();
+  const listingForm = document.querySelector('form[action="/listings/new"]');
+  if (listingForm) {
+    const maxMb = (window.APP_CONFIG && window.APP_CONFIG.MAX_IMAGE_MB) ? parseFloat(window.APP_CONFIG.MAX_IMAGE_MB) : 5;
+    listingForm.addEventListener('submit', (e) => {
+      const input = listingForm.querySelector('input[type="file"][name="images"]');
+      if (!input || !input.files) return;
+      for (let f of input.files) {
+        const mb = f.size / (1024*1024);
+        if (mb > maxMb) {
+          e.preventDefault();
+          alert(`Image ${f.name} is ${mb.toFixed(2)}MB — max allowed is ${maxMb}MB`);
+          return false;
+        }
+      }
+    });
+  }
+
+}); // DOMContentLoaded

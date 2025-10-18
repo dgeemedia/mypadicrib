@@ -1,30 +1,41 @@
-<!-- views/partials/header.ejs -->
-<header class="site-header">
-  <nav>
-    <a href="/">mypadiCrib</a>
-    <a href="/">Home</a>
-    <a href="/listings">Listings</a>
+<!--views/partials/header.ejs-->
+<header class="site-header" role="banner">
+  <div class="header-inner">
+    <a class="brand" href="/">mypadiCrib</a>
 
-    <% if (!user) { %>
-      <a href="/auth/login">Login</a>
-      <a href="/auth/signup">Sign up</a>
-    <% } else { %>
-      <% if (user.role === 'admin' || user.role === 'staff') { %>
-        <a href="/admin">Admin Dashboard</a>
+    <!-- main nav (desktop) -->
+    <div class="main-nav">
+      <a href="/">Home</a>
+      <a href="/listings">Listings</a>
+    </div>
+
+    <!-- right side links (desktop) -->
+    <div class="auth-links">
+      <% if (!user) { %>
+        <a href="/auth/login">Login</a>
+        <a href="/auth/signup">Sign up</a>
+      <% } else { %>
+        <% if (user.role === 'admin' || user.role === 'staff') { %>
+          <a href="/admin">Admin Dashboard</a>
+        <% } %>
+
+        <% if (user.role === 'owner') { %>
+          <a href="/owner/dashboard">Owner Dashboard</a>
+          <a href="/listings/new">Create listing</a>
+        <% } %>
+
+        <% if (user.role === 'user') { %>
+          <a href="/listings">Browse listings</a>
+        <% } %>
+
+        <span class="welcome">Welcome, <%= user.name %></span>
+        <a href="/auth/logout">Logout</a>
       <% } %>
+    </div>
 
-      <% if (user.role === 'owner') { %>
-        <a href="/owner/dashboard">Owner Dashboard</a>
-        <a href="/listings/new">Create listing</a>
-      <% } %>
-
-      <% if (user.role === 'user') { %>
-        <a href="/listings">Browse listings</a>
-      <% } %>
-
-      <span>Welcome, <%= user.name %></span>
-      <a href="/auth/logout">Logout</a>
-    <% } %>
-  </nav>
+    <!-- hamburger for mobile (kept last so absolute-positioning places it at far right) -->
+    <button id="drawer-open" class="drawer-open" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-drawer">
+      <span class="hamburger-icon" aria-hidden="true">☰</span>
+    </button>
+  </div>
 </header>
-
