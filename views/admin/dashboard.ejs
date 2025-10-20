@@ -1,5 +1,5 @@
-<!--views/admin/dashboard.ejs-->
-<section>
+<!-- views/admin/dashboard.ejs -->
+<section class="container">
   <h1>Admin Dashboard</h1>
 
   <% if (pending && pending.length) { %>
@@ -12,7 +12,7 @@
             <th>Title</th>
             <th>Owner</th>
             <th>Price (per night)</th>
-            <th>Listing Fee</th>
+            <th>Verification</th>
             <th>Created</th>
             <th>Actions</th>
           </tr>
@@ -25,37 +25,52 @@
               <td><%= l.owner_name || 'Unknown' %></td>
               <td>&#8358;<%= l.price %></td>
               <td>
-                <% if (l.listing_fee_amount && !l.listing_fee_paid) { %>
-                  <strong>₦<%= l.listing_fee_amount %></strong> (unpaid)
-                <% } else { %>
-                  <%= l.listing_fee_amount ? '₦' + l.listing_fee_amount + ' (paid)' : 'Free' %>
+                <% if (l.verification_id && l.selfie_path) { %>
+                  <a href="/admin/verification-file/<%= l.verification_id %>/selfie" target="_blank" rel="noopener">View Selfie</a><br>
+                <% } %>
+
+                <% if (l.verification_id && l.id_card_path) { %>
+                  <a href="/admin/verification-file/<%= l.verification_id %>/id_card" target="_blank" rel="noopener">View ID Card</a><br>
+                <% } %>
+
+                <% if (l.id_number) { %>
+                  <small><strong>ID#:</strong> <%= l.id_number %></small>
                 <% } %>
               </td>
-              <td>
-  <% if (l.verification_id && l.selfie_path) { %>
-    <a href="/admin/verification-file/<%= l.verification_id %>/selfie" target="_blank" rel="noopener">View Selfie (admin only)</a><br>
-  <% } %>
-  <% if (l.verification_id && l.id_card_path) { %>
-    <a href="/admin/verification-file/<%= l.verification_id %>/id_card" target="_blank" rel="noopener">View ID Card (admin only)</a><br>
-  <% } %>
-  <% if (l.id_number) { %>
-    <small><strong>ID#:</strong> <%= l.id_number %></small>
-  <% } %>
-</td>
-
               <td><%= new Date(l.created_at).toLocaleString() %></td>
+
               <td>
-                <form method="POST" action="/admin/listings/<%= l.id %>/approve" style="display:inline">
-                  <button type="submit">Approve</button>
-                </form>
+                <% /* Actions: pending -> Approve / Reject */ %>
+                <% if (l.status === 'pending') { %>
+                  <form method="POST" action="/admin/listings/<%= l.id %>/approve" style="display:inline">
+                    <button type="submit">Approve</button>
+                  </form>
 
-                <form method="POST" action="/admin/listings/<%= l.id %>/reject" style="display:inline" class="reject-form">
-  <input type="hidden" name="reason" class="reject-reason-input" value="">
-  <button type="button" class="reject-btn" data-listing-id="<%= l.id %>">Reject</button>
-</form>
+                  <form method="POST" action="/admin/listings/<%= l.id %>/reject" style="display:inline" class="reject-form">
+                    <input type="hidden" name="reason" class="reject-reason-input" value="">
+                    <button type="button" class="reject-btn" data-listing-id="<%= l.id %>">Reject</button>
+                  </form>
+                <% } else if (l.status === 'approved') { %>
+                  <form method="POST" action="/admin/listings/<%= l.id %>/suspend" style="display:inline" onsubmit="return confirm('Suspend this listing?')">
+                    <button type="submit">Suspend</button>
+                  </form>
 
+                  <form method="POST" action="/admin/listings/<%= l.id %>/delete" style="display:inline" onsubmit="return confirm('Permanently delete this listing? This cannot be undone.')">
+                    <button type="submit">Delete</button>
+                  </form>
+                <% } else if (l.status === 'suspended') { %>
+                  <form method="POST" action="/admin/listings/<%= l.id %>/reactivate" style="display:inline" onsubmit="return confirm('Reactivate listing?')">
+                    <button type="submit">Reactivate</button>
+                  </form>
 
-                <a href="/listings/<%= l.id %>">View</a>
+                  <form method="POST" action="/admin/listings/<%= l.id %>/delete" style="display:inline" onsubmit="return confirm('Permanently delete this listing? This cannot be undone.')">
+                    <button type="submit">Delete</button>
+                  </form>
+                <% } else { %>
+                  <span><%= l.status %></span>
+                <% } %>
+
+                <a href="/listings/<%= l.id %>" style="margin-left:8px">View</a>
               </td>
             </tr>
           <% }) %>
@@ -117,7 +132,7 @@ document.addEventListener('click', function(e){
   if (e.target.matches('.reject-btn')) {
     const btn = e.target;
     const reason = prompt('Enter reason for rejection (this will be sent to the owner):');
-    if (reason === null) return; // cancelled
+    if (reason === null) return; // user cancelled
     const form = btn.closest('.reject-form');
     const input = form.querySelector('.reject-reason-input');
     input.value = reason.trim() || 'No reason provided';

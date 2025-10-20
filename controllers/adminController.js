@@ -231,3 +231,149 @@ exports.addProvider = async (req, res) => {
     return res.redirect('/admin');
   }
 };
+
+// POST /admin/listings/:id/suspend
+exports.suspendListing = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const reason = (req.body && req.body.reason) ? req.body.reason : 'No reason provided';
+    const listing = await db.oneOrNone('SELECT * FROM listings WHERE id=$1', [id]);
+    if (!listing) {
+      req.flash('error', 'Listing not found');
+      return res.redirect('/admin');
+    }
+
+    await db.none('UPDATE listings SET status=$1, is_active=false, suspended_until=NULL WHERE id=$2', ['suspended', id]);
+
+    // notify owner (append to verification conversation if exists, else create)
+    try {
+      let convId = await findVerificationConversationForListing(id);
+      const body = `Your listing "${listing.title}" has been suspended by admin. Reason: ${reason}`;
+      if (convId) {
+        await messageModel.addMessage({ conversation_id: convId, sender_id: req.user.id, body });
+      } else {
+        const conv = await messageModel.createConversation({
+          subject: `Listing #${id} suspended`,
+          memberIds: [listing.owner_id, req.user.id]
+        });
+        await messageModel.addMessage({ conversation_id: conv.id, sender_id: req.user.id, body });
+      }
+    } catch (msgErr) {
+      console.error('suspendListing message send error', msgErr);
+    }
+
+    req.flash('success', 'Listing suspended');
+    return res.redirect('/admin');
+  } catch (err) {
+    console.error('suspendListing error', err);
+    req.flash('error', 'Could not suspend listing');
+    return res.redirect('/admin');
+  }
+};
+
+// POST /admin/listings/:id/reactivate
+exports.reactivateListing = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const listing = await db.oneOrNone('SELECT * FROM listings WHERE id=$1', [id]);
+    if (!listing) {
+      req.flash('error', 'Listing not found');
+      return res.redirect('/admin');
+    }
+
+    // only reactivate if it was suspended or approved previously
+    await db.none('UPDATE listings SET status=$1, is_active=true, suspended_until=NULL WHERE id=$2', ['approved', id]);
+
+    // notify owner
+    try {
+      let convId = await findVerificationConversationForListing(id);
+      const body = `Your listing "${listing.title}" has been reactivated and is now live.`;
+      if (convId) {
+        await messageModel.addMessage({ conversation_id: convId, sender_id: req.user.id, body });
+      } else {
+        const conv = await messageModel.createConversation({
+          subject: `Listing #${id} reactivated`,
+          memberIds: [listing.owner_id, req.user.id]
+        });
+        await messageModel.addMessage({ conversation_id: conv.id, sender_id: req.user.id, body });
+      }
+    } catch (msgErr) {
+      console.error('reactivateListing message send error', msgErr);
+    }
+
+    req.flash('success', 'Listing reactivated');
+    return res.redirect('/admin');
+  } catch (err) {
+    console.error('reactivateListing error', err);
+    req.flash('error', 'Could not reactivate listing');
+    return res.redirect('/admin');
+  }
+};
+
+// POST /admin/listings/:id/delete
+exports.deleteListing = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const listing = await db.oneOrNone('SELECT * FROM listings WHERE id=$1', [id]);
+    if (!listing) {
+      req.flash('error', 'Listing not found');
+      return res.redirect('/admin');
+    }
+
+    // fetch image paths to delete files from disk
+    const images = await db.manyOrNone('SELECT image_path FROM listing_images WHERE listing_id=$1', [id]);
+
+    // Start DB transaction: delete related rows then listing
+    await db.tx(async t => {
+      await t.none('DELETE FROM listing_images WHERE listing_id=$1', [id]);
+      await t.none('DELETE FROM listing_fees WHERE listing_id=$1', [id]);
+      await t.none('DELETE FROM listing_verifications WHERE listing_id=$1', [id]);
+      await t.none('DELETE FROM bookings WHERE listing_id=$1', [id]);
+      await t.none('DELETE FROM reviews WHERE listing_id=$1', [id]);
+      // add any other dependent tables you need to clean up
+      await t.none('DELETE FROM listings WHERE id=$1', [id]);
+    });
+
+    // delete files from uploads/ and secure_uploads/ if they exist (non-blocking)
+    try {
+      const safeUnlink = p => {
+        try {
+          const fp = path.join(process.cwd(), p.replace(/^\//,'')); // remove leading slash if present
+          if (fs.existsSync(fp)) fs.unlinkSync(fp);
+        } catch (e) {
+          console.warn('Failed unlink file', p, e.message || e);
+        }
+      };
+      images.forEach(r => { if (r && r.image_path) safeUnlink(r.image_path); });
+      // also try to remove verification files if stored
+      const ver = await db.oneOrNone('SELECT selfie_path, id_card_path FROM listing_verifications WHERE listing_id=$1', [id]);
+      if (ver) { safeUnlink(ver.selfie_path); safeUnlink(ver.id_card_path); }
+    } catch (fileErr) {
+      console.warn('deleteListing: file deletion warnings', fileErr);
+    }
+
+    // notify owner
+    try {
+      let convId = await findVerificationConversationForListing(id);
+      const body = `Your listing "${listing.title}" has been permanently deleted by admin. If you believe this was a mistake contact support.`;
+      if (convId) {
+        await messageModel.addMessage({ conversation_id: convId, sender_id: req.user.id, body });
+      } else {
+        const conv = await messageModel.createConversation({
+          subject: `Listing #${id} deleted`,
+          memberIds: [listing.owner_id, req.user.id]
+        });
+        await messageModel.addMessage({ conversation_id: conv.id, sender_id: req.user.id, body });
+      }
+    } catch (msgErr) {
+      console.error('deleteListing message send error', msgErr);
+    }
+
+    req.flash('success', 'Listing deleted');
+    return res.redirect('/admin');
+  } catch (err) {
+    console.error('deleteListing error', err && err.stack ? err.stack : err);
+    req.flash('error', 'Could not delete listing');
+    return res.redirect('/admin');
+  }
+};

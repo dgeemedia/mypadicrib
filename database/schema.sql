@@ -187,3 +187,42 @@ UPDATE listing_images
 SET image_path = '/uploads/' || regexp_replace(image_path, '^.*[\\/]+uploads[\\/]+', '')
 WHERE image_path IS NOT NULL
   AND image_path ~* 'uploads[\\/]' ;
+
+-- optional: add expiry/suspended metadata
+ALTER TABLE listings
+ADD COLUMN suspended_until timestamptz NULL,
+ADD COLUMN deleted_at timestamptz NULL;
+
+-- replace 123 with the listing id
+UPDATE listings
+SET status = 'suspended', is_active = false, suspended_until = NULL
+WHERE id = 123;
+
+UPDATE listings
+SET status = 'approved', is_active = true, suspended_until = NULL
+WHERE id = 123;
+
+BEGIN;
+
+-- delete images (DB)
+DELETE FROM listing_images WHERE listing_id = 123;
+
+-- delete verification record (optional)
+DELETE FROM listing_verifications WHERE listing_id = 123;
+
+-- delete listing fees, bookings, reviews etc. (example)
+DELETE FROM listing_fees WHERE listing_id = 123;
+DELETE FROM bookings WHERE listing_id = 123;
+DELETE FROM reviews WHERE listing_id = 123;
+
+-- finally delete the listing
+DELETE FROM listings WHERE id = 123;
+
+COMMIT;
+
+-- suspend listings whose suspended_until is in the past
+UPDATE listings
+SET status='suspended', is_active=false
+WHERE suspended_until IS NOT NULL
+  AND suspended_until < now()
+  AND is_active = true;
