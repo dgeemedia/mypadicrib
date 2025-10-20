@@ -226,3 +226,50 @@ SET status='suspended', is_active=false
 WHERE suspended_until IS NOT NULL
   AND suspended_until < now()
   AND is_active = true;
+
+-- add status to users (default active)
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active';
+
+-- optional: record suspended until timestamp
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS suspended_until timestamptz NULL;
+
+-- ensure listings supports 'suspended' (if statuses are freeform this is not necessary)
+ALTER TABLE listings
+  ALTER COLUMN status TYPE text USING status::text;
+
+CREATE INDEX IF NOT EXISTS users_status_idx ON users(status);
+
+UPDATE listings
+SET status = 'deleted',
+    is_active = false
+WHERE status = 'approved';
+
+UPDATE users
+SET status = 'suspended',
+    suspended_until = '2025-11-01 00:00:00+00'
+WHERE id = 123;
+
+UPDATE users
+SET status = 'suspended',
+    suspended_until = NULL
+WHERE id = 123;
+
+UPDATE users
+SET status = 'active',
+    suspended_until = NULL
+WHERE id = 123;
+
+CREATE TABLE IF NOT EXISTS user_suspensions (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  action TEXT NOT NULL, -- 'suspend'|'reinstate'|'note'
+  reason TEXT,
+  metadata JSONB,
+  created_at timestamptz DEFAULT now()
+);
+
+UPDATE users SET status='active', suspended_until=NULL
+WHERE status='suspended' AND suspended_until IS NOT NULL AND suspended_until <= now();

@@ -1,4 +1,4 @@
-<!-- views/admin/dashboard.ejs -->
+<!--views/admin/dashboard.ejs-->
 <section class="container">
   <h1>Admin Dashboard</h1>
 
@@ -83,6 +83,59 @@
 
   <hr>
 
+  <!-- USERS MANAGEMENT -->
+  <section>
+    <h2>Users</h2>
+
+    <% if (users && users.length) { %>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% users.forEach(function(u, i){ %>
+            <tr>
+              <td><%= i + 1 %></td>
+              <td><%= u.name %></td>
+              <td><%= u.email %></td>
+              <td><%= u.role %></td>
+              <td>
+                <%= u.status %>
+                <% if (u.suspended_until) { %>
+                  <br><small>until <%= new Date(u.suspended_until).toLocaleString() %></small>
+                <% } %>
+              </td>
+              <td>
+                <% if (u.status !== 'suspended') { %>
+                  <form method="POST" action="/admin/users/<%= u.id %>/suspend" class="suspend-form" style="display:inline">
+                    <input type="hidden" name="suspended_until" class="suspended-until-input" value="">
+                    <input type="hidden" name="reason" class="suspend-reason-input" value="">
+                    <button type="button" class="suspend-user-btn" data-user-id="<%= u.id %>">Suspend</button>
+                  </form>
+                <% } else { %>
+                  <form method="POST" action="/admin/users/<%= u.id %>/reactivate" class="reactivate-form" style="display:inline">
+                    <input type="hidden" name="reason" class="reactivate-reason-input" value="">
+                    <button type="button" class="reactivate-user-btn" data-user-id="<%= u.id %>">Reactivate</button>
+                  </form>
+                <% } %>
+
+                <form method="POST" action="/admin/users/<%= u.id %>/delete" style="display:inline" onsubmit="return confirm('Delete user permanently? This cannot be undone.')">
+                  <button type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <p>No users found.</p>
+    <% } %>
+  </section>
+
+  <hr>
+
   <section>
     <h2>Create Staff Account</h2>
     <form method="POST" action="/admin/staff/create">
@@ -129,6 +182,7 @@
 
 <script>
 document.addEventListener('click', function(e){
+  // listing reject button (existing)
   if (e.target.matches('.reject-btn')) {
     const btn = e.target;
     const reason = prompt('Enter reason for rejection (this will be sent to the owner):');
@@ -136,6 +190,35 @@ document.addEventListener('click', function(e){
     const form = btn.closest('.reject-form');
     const input = form.querySelector('.reject-reason-input');
     input.value = reason.trim() || 'No reason provided';
+    form.submit();
+  }
+
+  // suspend user: prompt for until-date (optional) and reason, then submit form
+  if (e.target.matches('.suspend-user-btn')) {
+    const btn = e.target;
+    const form = btn.closest('.suspend-form');
+    const untilInput = form.querySelector('.suspended-until-input');
+    const reasonInput = form.querySelector('.suspend-reason-input');
+
+    const until = prompt('Enter suspended-until date and time (ISO or "YYYY-MM-DD HH:MM"), or leave empty for indefinite:');
+    if (until === null) return; // cancelled
+    const reason = prompt('Enter reason for suspension (this will be recorded and sent to user):');
+    if (reason === null) return;
+
+    untilInput.value = until.trim() || '';
+    reasonInput.value = reason.trim() || 'Violation of platform rules';
+    form.submit();
+  }
+
+  // reactivate user: prompt for optional note/reason before submit
+  if (e.target.matches('.reactivate-user-btn')) {
+    const btn = e.target;
+    const form = btn.closest('.reactivate-form');
+    const reasonInput = form.querySelector('.reactivate-reason-input');
+
+    const reason = prompt('Enter note/reason for reactivation (optional):');
+    if (reason === null) return; // cancelled
+    reasonInput.value = reason.trim() || 'Restitution confirmed';
     form.submit();
   }
 });
