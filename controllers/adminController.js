@@ -1,10 +1,20 @@
 // controllers/adminController.js
 const db = require('../models/db');
 const bcrypt = require('bcryptjs');
+const path = require('path');
+const fs = require('fs');
+const messageModel = require('../models/messageModel'); // <-- fixed: require messageModel
 
 exports.dashboard = async (req, res) => {
   try {
-    const pending = await db.manyOrNone('SELECT l.*, u.name AS owner_name FROM listings l LEFT JOIN users u ON u.id = l.owner_id WHERE l.status=$1 ORDER BY l.created_at DESC', ['pending']);
+    const pending = await db.manyOrNone(
+      `SELECT l.*, u.name AS owner_name, lv.selfie_path, lv.id_card_path, lv.id_number, lv.id as verification_id
+       FROM listings l
+       LEFT JOIN users u ON u.id = l.owner_id
+       LEFT JOIN listing_verifications lv ON lv.listing_id = l.id
+       WHERE l.status=$1
+       ORDER BY l.created_at DESC`, ['pending']
+    );
     return res.render('admin/dashboard', { pending });
   } catch (err) {
     console.error('admin.dashboard error', err);
@@ -12,6 +22,18 @@ exports.dashboard = async (req, res) => {
     return res.redirect('/');
   }
 };
+
+// helper: find existing verification conversation for a listing (by subject LIKE)
+async function findVerificationConversationForListing(listingId) {
+  // look for subject containing "Verification for listing #<id>"
+  const row = await db.oneOrNone(
+    `SELECT c.id FROM conversations c
+     WHERE c.subject ILIKE $1
+     ORDER BY c.id DESC
+     LIMIT 1`, [`%Verification for listing #${listingId}%`]
+  );
+  return row ? row.id : null;
+}
 
 // POST /admin/listings/:id/approve
 exports.approveListing = async (req, res) => {
@@ -26,7 +48,38 @@ exports.approveListing = async (req, res) => {
       req.flash('error', 'Listing fee unpaid. Cannot approve.');
       return res.redirect('/admin');
     }
+
+    // update listing to approved and active
     await db.none('UPDATE listings SET status=$1, is_active=true WHERE id=$2', ['approved', id]);
+
+    // mark verification record approved (if exists)
+    await db.none('UPDATE listing_verifications SET status=$1 WHERE listing_id=$2', ['approved', id]);
+
+    // Notify owner: try to append to existing verification conversation; otherwise create new
+    try {
+      let convId = await findVerificationConversationForListing(id);
+      if (convId) {
+        await messageModel.addMessage({
+          conversation_id: convId,
+          sender_id: req.user.id,
+          body: `Your listing "${listing.title}" has been approved and is now live.`
+        });
+      } else {
+        const conv = await messageModel.createConversation({
+          subject: `Listing #${id} approved`,
+          memberIds: [listing.owner_id, req.user.id]
+        });
+        await messageModel.addMessage({
+          conversation_id: conv.id,
+          sender_id: req.user.id,
+          body: `Your listing "${listing.title}" has been approved and is now live.`
+        });
+      }
+    } catch (msgErr) {
+      // log but do not fail approval if message sending fails
+      console.error('approveListing message send error', msgErr);
+    }
+
     req.flash('success', 'Listing approved');
     return res.redirect('/admin');
   } catch (err) {
@@ -40,13 +93,109 @@ exports.approveListing = async (req, res) => {
 exports.rejectListing = async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
+    const reason = (req.body && req.body.reason) ? req.body.reason : 'No reason provided';
+    const listing = await db.oneOrNone('SELECT * FROM listings WHERE id=$1', [id]);
+    if (!listing) {
+      req.flash('error', 'Listing not found');
+      return res.redirect('/admin');
+    }
+
     await db.none('UPDATE listings SET status=$1 WHERE id=$2', ['rejected', id]);
+    await db.none('UPDATE listing_verifications SET status=$1 WHERE listing_id=$2', ['rejected', id]);
+
+    // Notify owner: append to verification conversation if exists, otherwise create a new one
+    try {
+      let convId = await findVerificationConversationForListing(id);
+      if (convId) {
+        await messageModel.addMessage({
+          conversation_id: convId,
+          sender_id: req.user.id,
+          body: `Your listing "${listing.title}" was rejected. Reason: ${reason}`
+        });
+      } else {
+        const conv = await messageModel.createConversation({
+          subject: `Listing #${id} rejected`,
+          memberIds: [listing.owner_id, req.user.id]
+        });
+        await messageModel.addMessage({
+          conversation_id: conv.id,
+          sender_id: req.user.id,
+          body: `Your listing "${listing.title}" was rejected. Reason: ${reason}`
+        });
+      }
+    } catch (msgErr) {
+      console.error('rejectListing message send error', msgErr);
+    }
+
     req.flash('success', 'Listing rejected');
     return res.redirect('/admin');
   } catch (err) {
     console.error('rejectListing error', err);
     req.flash('error', 'Could not reject');
     return res.redirect('/admin');
+  }
+};
+
+// GET /admin/verification-file/:verificationId/:type (admin only)
+exports.serveVerificationFile = async (req, res) => {
+  try {
+    const verificationId = parseInt(req.params.verificationId, 10);
+    const type = req.params.type; // expected 'selfie' or 'id_card'
+    if (!['selfie', 'id_card'].includes(type)) {
+      return res.status(400).send('Invalid file type requested');
+    }
+
+    // fetch record
+    const rec = await db.oneOrNone('SELECT selfie_path, id_card_path FROM listing_verifications WHERE id=$1', [verificationId]);
+    if (!rec) {
+      console.warn(`serveVerificationFile: no verification record for id=${verificationId}`);
+      return res.status(404).send('Verification record not found');
+    }
+
+    // raw value from DB (could be absolute windows path, or "/secure_uploads/filename", or relative)
+    const rawPath = (type === 'selfie') ? rec.selfie_path : rec.id_card_path;
+    if (!rawPath) {
+      console.warn(`serveVerificationFile: no ${type}_path on verification id=${verificationId}`, rec);
+      return res.status(404).send('File not found');
+    }
+
+    // normalize and extract filename safely (handles windows absolute paths and forward/back slashes)
+    const filename = path.basename(String(rawPath));
+    if (!filename) {
+      console.warn('serveVerificationFile: could not derive filename from rawPath:', rawPath);
+      return res.status(404).send('File not found');
+    }
+
+    // build absolute path within secure_uploads
+    const secureDir = path.resolve(process.cwd(), 'secure_uploads');
+    const abs = path.join(secureDir, filename);
+
+    // extra safety: ensure abs is inside secureDir
+    const resolved = path.resolve(abs);
+    if (!resolved.startsWith(secureDir)) {
+      console.error('serveVerificationFile: resolved path outside secure dir', { secureDir, resolved });
+      return res.status(403).send('Forbidden');
+    }
+
+    // log useful debug info
+    console.info(`serveVerificationFile: verificationId=${verificationId}, type=${type}, rawPath=${rawPath}, filename=${filename}, abs=${abs}`);
+
+    if (!fs.existsSync(abs)) {
+      console.warn('serveVerificationFile: file does not exist', abs);
+      return res.status(404).send('File not found');
+    }
+
+    // send file (let express set content-type)
+    return res.sendFile(abs, (err) => {
+      if (err) {
+        console.error('serveVerificationFile: sendFile error', err && err.stack ? err.stack : err);
+        // if headers already sent, nothing to do
+        if (!res.headersSent) res.status(500).send('Server error');
+      }
+    });
+  } catch (err) {
+    console.error('serveVerificationFile unexpected error', err && err.stack ? err.stack : err);
+    return res.status(500).send('Server error');
   }
 };
 

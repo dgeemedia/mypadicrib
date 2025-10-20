@@ -160,3 +160,30 @@ CREATE TABLE IF NOT EXISTS messages (
 
 CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_conv_members_user ON conversation_members(user_id);
+
+-- create_listing_verifications.sql
+CREATE TABLE listing_verifications (
+  id SERIAL PRIMARY KEY,
+  listing_id INTEGER REFERENCES listings(id) ON DELETE CASCADE,
+  owner_id INTEGER REFERENCES users(id),
+  selfie_path TEXT,
+  id_card_path TEXT,
+  id_number TEXT,
+  status VARCHAR(20) DEFAULT 'pending',
+  admin_notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Preview what will be updated (run first)
+SELECT id, image_path,
+       regexp_replace(image_path, '^.*[\\/]+uploads[\\/]+', '') AS filename_only,
+       '/uploads/' || regexp_replace(image_path, '^.*[\\/]+uploads[\\/]+', '') AS new_path
+FROM listing_images
+WHERE image_path IS NOT NULL
+  AND image_path ~* 'uploads[\\/]' ;
+
+-- If the preview looks correct, run the update:
+UPDATE listing_images
+SET image_path = '/uploads/' || regexp_replace(image_path, '^.*[\\/]+uploads[\\/]+', '')
+WHERE image_path IS NOT NULL
+  AND image_path ~* 'uploads[\\/]' ;

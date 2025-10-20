@@ -5,6 +5,8 @@ const reviewModel = require('../models/reviewModel');
 const db = require('../models/db');
 const fs = require('fs');
 const path = require('path');
+const listingVerificationModel = require('../models/listingVerificationModel');
+const messageModel = require('../models/messageModel');
 
 //
 // INDEX - show approved listings on home page with images + review stats + latest review
@@ -114,16 +116,22 @@ exports.createForm = (req, res) => {
 //
 exports.createPost = async (req, res) => {
   try {
-    const { title, description, state, lga, address, price } = req.body;
+    const { title, description, state, lga, address, price, id_number } = req.body;
     const ownerId = req.user && req.user.id;
     if (!ownerId) {
       req.flash('error', 'You must be logged in to create a listing');
       return res.redirect('/auth/login');
     }
-
-    // basic validation
     if (!title || !price) {
       req.flash('error', 'Title and price are required');
+      return res.redirect('/listings/new');
+    }
+
+    // ensure verification files + id number present
+    const selfieFile = req.files && req.files.selfie && req.files.selfie[0];
+    const idCardFile = req.files && req.files.id_card && req.files.id_card[0];
+    if (!selfieFile || !idCardFile || !id_number) {
+      req.flash('error', 'Please upload a selfie, an ID card image and provide your ID number.');
       return res.redirect('/listings/new');
     }
 
@@ -134,6 +142,7 @@ exports.createPost = async (req, res) => {
     const feeAmount = requiresFee ? listingFee : 0.00;
     const feePaid = !requiresFee;
 
+    // create listing
     const r = await listingModel.createListing({
       owner_id: ownerId,
       title,
@@ -147,11 +156,22 @@ exports.createPost = async (req, res) => {
     });
     const listingId = r.id;
 
-    // save files if uploaded
-    if (req.files && req.files.length) {
-      const paths = req.files.map(f => '/' + f.path.replace(/\\/g, '/'));
+    // save public listing images (images field) — store web path /uploads/<filename>
+    if (req.files && req.files.images && req.files.images.length) {
+      const paths = req.files.images.map(f => '/uploads/' + path.basename(f.path));
       await listingImageModel.addImages(listingId, paths);
     }
+
+    // save verification record (store as /secure_uploads/<filename> so admin route can resolve)
+    const selfiePath = '/secure_uploads/' + path.basename(selfieFile.path);
+    const idCardPath = '/secure_uploads/' + path.basename(idCardFile.path);
+    const ver = await listingVerificationModel.createVerification({
+      listing_id: listingId,
+      owner_id: ownerId,
+      selfie_path: selfiePath,
+      id_card_path: idCardPath,
+      id_number
+    });
 
     if (requiresFee) {
       await db.none('INSERT INTO listing_fees(listing_id, owner_id, amount, paid, created_at) VALUES($1,$2,$3,false,now())', [listingId, ownerId, feeAmount]);
@@ -159,7 +179,21 @@ exports.createPost = async (req, res) => {
       return res.redirect(`/payments/listing-fee?listingId=${listingId}`);
     }
 
-    req.flash('success', 'Listing created and queued for admin approval.');
+    // Notify admin(s) & owner: create conversation including owner + admin
+    const admin = await db.oneOrNone("SELECT id, name FROM users WHERE role='admin' ORDER BY id LIMIT 1");
+    if (admin) {
+      const conv = await messageModel.createConversation({
+        subject: `Verification for listing #${listingId} - ${title}`,
+        memberIds: [ownerId, admin.id]
+      });
+      await messageModel.addMessage({
+        conversation_id: conv.id,
+        sender_id: ownerId,
+        body: `I've submitted verification for listing #${listingId}. Awaiting admin review.`
+      });
+    }
+
+    req.flash('success', 'Listing created and queued for admin approval. Documents sent for verification.');
     return res.redirect('/owner/dashboard');
   } catch (err) {
     console.error('listingController.createPost error', err);
@@ -178,7 +212,8 @@ exports.addImages = async (req, res) => {
       req.flash('error', 'No images uploaded');
       return res.redirect(`/listings/${listingId}`);
     }
-    const paths = req.files.map(f => '/' + f.path.replace(/\\/g, '/'));
+    // store web-friendly paths
+    const paths = req.files.map(f => '/uploads/' + path.basename(f.path));
     await listingImageModel.addImages(listingId, paths);
     req.flash('success', 'Images uploaded');
     return res.redirect(`/listings/${listingId}`);

@@ -10,7 +10,16 @@ router.get('/', listingController.index);
 
 // create listing (authenticated users can create - owners and users share signup)
 router.get('/new', ensureRole(['user', 'owner']), listingController.createForm);
-router.post('/new', ensureRole(['user', 'owner']), upload.array('images', 4), listingController.createPost);
+router.post(
+  '/new',
+  ensureRole(['user', 'owner']),
+  upload.fields([
+    { name: 'images', maxCount: 4 },   // public listing images -> uploads/
+    { name: 'selfie', maxCount: 1 },   // private -> secure_uploads/
+    { name: 'id_card', maxCount: 1 }   // private -> secure_uploads/
+  ]),
+  listingController.createPost
+);
 
 // add / delete images (user/owner only)
 router.post('/:id/images', ensureRole(['user', 'owner']), ensureOwnerOfListing(), upload.array('images', 6), listingController.addImages);

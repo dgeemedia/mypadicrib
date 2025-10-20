@@ -5,6 +5,26 @@
   <p>Welcome, <%= user ? user.name : 'Owner' %>. Manage your listings below.</p>
 
   <% if (listings && listings.length) { %>
+    
+    <section>
+  <h2>Inbox</h2>
+  <% if (conversations && conversations.length) { %>
+    <ul>
+      <% conversations.forEach(function(c){ %>
+        <li>
+          <a href="/messages/<%= c.id %>"><strong><%= c.subject || ('Conversation #' + c.id) %></strong></a>
+          <% if (c.lastMessage) { %>
+            <div><small><%= c.lastMessage.sender_name %> — <%= c.lastMessage.body.length > 120 ? c.lastMessage.body.slice(0,120) + '…' : c.lastMessage.body %></small></div>
+          <% } %>
+          <small>Updated: <%= new Date(c.last_message_at).toLocaleString() %></small>
+        </li>
+      <% }) %>
+    </ul>
+  <% } else { %>
+    <p>No messages yet.</p>
+  <% } %>
+</section>
+    
     <section>
       <h2>Your Listings</h2>
       <ul class="owner-listings" style="list-style:none; padding:0;">

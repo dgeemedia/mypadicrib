@@ -157,25 +157,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // If user clicks a .card thumb or .card a (index) open gallery with the card's data-images
   document.addEventListener('click', (e) => {
-    const cardThumb = e.target.closest('.card .thumb') || e.target.closest('.card .thumb img');
-    if (cardThumb) {
-      const card = cardThumb.closest('.card');
-      if (!card) return;
-      const data = card.dataset.images;
-      let imgs = [];
-      try { imgs = JSON.parse(data || '[]'); } catch (err) { imgs = []; }
-      if (imgs.length) openGalleryModal(imgs, 0, card.querySelector('.thumbs') || card.querySelector('.thumbs-inline'));
+  const cardThumb = e.target.closest('.card .thumb') || e.target.closest('.card .thumb img');
+  if (cardThumb) {
+    const card = cardThumb.closest('.card');
+    if (!card) return;
+    const data = card.dataset.images;
+    let imgs = [];
+    try { imgs = JSON.parse(data || '[]'); } catch (err) { imgs = []; }
+    if (imgs.length) {
+      // try to find the thumbs container matching templates
+      const thumbsContainer = card.querySelector('.gallery-thumbs') || card.querySelector('.thumbs') || card.querySelector('.thumbs-inline') || null;
+      openGalleryModal(imgs, 0, thumbsContainer);
     }
+  }
 
     // if any element has data-gallery attribute with JSON
-    const galleryTrigger = e.target.closest('[data-gallery]');
-    if (galleryTrigger) {
-      let imgs = [];
-      try { imgs = JSON.parse(galleryTrigger.dataset.gallery || '[]'); } catch(err) { imgs = []; }
-      const idx = parseInt(galleryTrigger.dataset-index || '0', 10);
-      if (imgs.length) openGalleryModal(imgs, idx, galleryTrigger.closest('.card') ? galleryTrigger.closest('.card').querySelector('.thumbs') : null);
+     const galleryTrigger = e.target.closest('[data-gallery]');
+  if (galleryTrigger) {
+    let imgs = [];
+    try { imgs = JSON.parse(galleryTrigger.dataset.gallery || '[]'); } catch(err) { imgs = []; }
+    const idx = parseInt(galleryTrigger.datasetIndex || galleryTrigger.dataset.index || galleryTrigger.dataset['index'] || '0', 10);
+    if (imgs.length) {
+      const thumbsContainer = galleryTrigger.closest('.card') ? galleryTrigger.closest('.card').querySelector('.gallery-thumbs') : null;
+      openGalleryModal(imgs, idx, thumbsContainer);
     }
-  });
+  }
+});
 
 
   /* ============================

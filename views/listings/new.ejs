@@ -33,6 +33,19 @@
       <small>Max <%= process.env.MAX_IMAGE_MB || 5 %> MB per image.</small>
     </label>
 
+    <label>Your photo (selfie) — required
+      <input type="file" name="selfie" accept="image/*" required>
+    </label>
+
+    <label>ID card (front showing your face) — required
+      <input type="file" name="id_card" accept="image/*" required>
+    </label>
+
+    <label>ID Number (NIN / Driver's Licence / Voter Card / International Passport) — required
+      <input type="text" name="id_number" required>
+    </label>
+
+
     <button type="submit">Create</button>
   </form>
 </section>
