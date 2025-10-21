@@ -5,18 +5,30 @@ const path = require('path');
 const fs = require('fs');
 const messageModel = require('../models/messageModel');
 const userModel = require('../models/userModel');
+const listingModel = require('../models/listingModel'); // make sure this exists
 
 //
 // Admin dashboard (lists pending listings + users)
 //
 exports.dashboard = async (req, res) => {
   try {
+    // pending listings (verification queue) - keep behaviour the same
     const pending = await db.manyOrNone(
       `SELECT l.*, u.name AS owner_name, lv.selfie_path, lv.id_card_path, lv.id_number, lv.id as verification_id
        FROM listings l
        LEFT JOIN users u ON u.id = l.owner_id
        LEFT JOIN listing_verifications lv ON lv.listing_id = l.id
-       WHERE l.status=$1
+       WHERE l.status = $1
+       ORDER BY l.created_at DESC`, ['pending']
+    );
+
+    // managed listings: everything except 'pending' (includes approved, suspended, payment_required, deleted etc)
+    const managedListings = await db.manyOrNone(
+      `SELECT l.*, u.name AS owner_name, lv.id as verification_id
+       FROM listings l
+       LEFT JOIN users u ON u.id = l.owner_id
+       LEFT JOIN listing_verifications lv ON lv.listing_id = l.id
+       WHERE COALESCE(l.status, '') <> $1
        ORDER BY l.created_at DESC`, ['pending']
     );
 
@@ -26,7 +38,7 @@ exports.dashboard = async (req, res) => {
        ORDER BY created_at DESC`
     );
 
-    return res.render('admin/dashboard', { pending, users });
+    return res.render('admin/dashboard', { pending, managedListings, users });
   } catch (err) {
     console.error('admin.dashboard error', err);
     req.flash('error', 'Unable to load admin dashboard');
@@ -300,6 +312,10 @@ exports.reactivateListing = async (req, res) => {
   }
 };
 
+/**
+ * Admin "delete" action: now performs a soft-delete using listingModel.softDeleteListing
+ * (marks the listing as deleted, optional image file removal for public images, and notifies owner)
+ */
 exports.deleteListing = async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
@@ -309,36 +325,29 @@ exports.deleteListing = async (req, res) => {
       return res.redirect('/admin');
     }
 
-    const images = await db.manyOrNone('SELECT image_path FROM listing_images WHERE listing_id=$1', [id]);
+    // Soft delete: mark deleted + keep data (safer)
+    await listingModel.softDeleteListing(id, { adminId: req.user ? req.user.id : null, reason: req.body.reason || null });
 
-    await db.tx(async t => {
-      await t.none('DELETE FROM listing_images WHERE listing_id=$1', [id]);
-      await t.none('DELETE FROM listing_fees WHERE listing_id=$1', [id]);
-      await t.none('DELETE FROM listing_verifications WHERE listing_id=$1', [id]);
-      await t.none('DELETE FROM bookings WHERE listing_id=$1', [id]);
-      await t.none('DELETE FROM reviews WHERE listing_id=$1', [id]);
-      await t.none('DELETE FROM listings WHERE id=$1', [id]);
-    });
-
+    // Optionally remove public listing image files (uploads/) — keep secure verification files until hard-delete
     try {
+      const images = await db.manyOrNone('SELECT image_path FROM listing_images WHERE listing_id=$1', [id]);
       const safeUnlink = p => {
         try {
-          const fp = path.join(process.cwd(), p.replace(/^\//, ''));
+          const fp = path.join(process.cwd(), p.replace(/^\//,'')); // e.g. uploads/...
           if (fs.existsSync(fp)) fs.unlinkSync(fp);
         } catch (e) {
           console.warn('Failed unlink file', p, e.message || e);
         }
       };
       images.forEach(r => { if (r && r.image_path) safeUnlink(r.image_path); });
-      const ver = await db.oneOrNone('SELECT selfie_path, id_card_path FROM listing_verifications WHERE listing_id=$1', [id]);
-      if (ver) { safeUnlink(ver.selfie_path); safeUnlink(ver.id_card_path); }
-    } catch (fileErr) {
-      console.warn('deleteListing: file deletion warnings', fileErr);
+    } catch (e) {
+      console.warn('deleteListing file unlink error', e);
     }
 
+    // notify owner (same as before)
     try {
       let convId = await findVerificationConversationForListing(id);
-      const body = `Your listing "${listing.title}" has been permanently deleted by admin. If you believe this was a mistake contact support.`;
+      const body = `Your listing "${listing.title}" has been deleted by admin. If you think this is a mistake contact support.`;
       if (convId) {
         await messageModel.addMessage({ conversation_id: convId, sender_id: req.user.id, body });
       } else {
@@ -352,7 +361,7 @@ exports.deleteListing = async (req, res) => {
       console.error('deleteListing message send error', msgErr);
     }
 
-    req.flash('success', 'Listing deleted');
+    req.flash('success', 'Listing deleted (soft) — data retained for records');
     return res.redirect('/admin');
   } catch (err) {
     console.error('deleteListing error', err && err.stack ? err.stack : err);
@@ -389,8 +398,8 @@ exports.suspendUser = async (req, res) => {
     const suspended_until = req.body.suspended_until && req.body.suspended_until.trim() !== '' ? req.body.suspended_until : null;
     const reason = req.body.reason || 'Violation of platform rules';
 
-    // call userModel with an options object
-    await userModel.suspendUser(id, { suspendedUntil: suspended_until, adminId: req.user.id, reason });
+    // call userModel with an options object (userModel.suspendUser should accept either simple args or the object; make sure userModel matches)
+    await userModel.suspendUser(id, suspended_until);
 
     try {
       const conv = await messageModel.createConversation({
@@ -417,7 +426,7 @@ exports.reactivateUser = async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const reason = req.body.reason || 'Restitution confirmed';
-    await userModel.reactivateUser(id, { adminId: req.user.id, reason });
+    await userModel.reactivateUser(id);
 
     try {
       const conv = await messageModel.createConversation({
@@ -451,5 +460,47 @@ exports.deleteUser = async (req, res) => {
     console.error('deleteUser error', err);
     req.flash('error', 'Could not delete user');
     return res.redirect('/admin/users');
+  }
+};
+
+// POST /admin/listings/:id/suspend-unpaid
+exports.suspendUnpaidListing = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const listing = await db.oneOrNone('SELECT id, listing_fee_paid, listing_fee_amount, status FROM listings WHERE id=$1', [id]);
+    if (!listing) {
+      req.flash('error', 'Listing not found');
+      return res.redirect('/admin');
+    }
+    if (listing.listing_fee_paid) {
+      req.flash('error', 'Listing is already paid');
+      return res.redirect('/admin');
+    }
+
+    // suspend via model helper
+    await listingModel.suspendListingByAdmin(id, { adminId: req.user.id, reason: req.body.reason || 'Fee unpaid' });
+
+    // notify owner using your messageModel
+    try {
+      const body = `Your listing has been suspended because the listing fee has not been paid. Please pay to restore visibility.`;
+      // reuse findVerificationConversationForListing or create a new conversation
+      let convId = await findVerificationConversationForListing(id);
+      if (convId) {
+        await messageModel.addMessage({ conversation_id: convId, sender_id: req.user.id, body });
+      } else {
+        const conv = await messageModel.createConversation({
+          subject: `Listing #${id} suspended for unpaid fee`,
+          memberIds: [listing.owner_id, req.user.id]
+        });
+        await messageModel.addMessage({ conversation_id: conv.id, sender_id: req.user.id, body });
+      }
+    } catch (e) { console.warn('notify owner failed', e); }
+
+    req.flash('success', 'Listing suspended (unpaid fee)');
+    return res.redirect('/admin');
+  } catch (err) {
+    console.error('suspendUnpaidListing error', err);
+    req.flash('error', 'Could not suspend listing');
+    return res.redirect('/admin');
   }
 };

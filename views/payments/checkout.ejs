@@ -1,11 +1,83 @@
 <!-- views/payments/checkout.ejs -->
 <section>
   <h2>Checkout</h2>
+
+  <% if (listing) { %>
+    <h3>Listing: <%= listing.title %></h3>
+    <p>Price (per night): ₦<%= listing.price %></p>
+    <p>
+      <% if (listing.listing_fee_amount && !listing.listing_fee_paid) { %>
+        <strong>One-time listing fee:</strong> ₦<%= listing.listing_fee_amount %> (unpaid)
+      <% } else { %>
+        <strong>Listing fee:</strong> ₦<%= (listing.listing_fee_amount || '0.00') %>
+      <% } %>
+    </p>
+
+    <!-- Paystack initiation form -->
+    <form method="POST" action="/payments/listing-initiate">
+      <input type="hidden" name="listingId" value="<%= listing.id %>">
+      <label>Period:
+        <select name="period">
+          <option value="monthly">Monthly</option>
+          <option value="yearly">Yearly</option>
+        </select>
+      </label>
+      <button type="submit">Pay with Paystack</button>
+    </form>
+
+    <p><a href="/owner/dashboard">Back to dashboard</a></p>
+  <% } else { %>
+  <!-- Generic booking checkout flow -->
   <form method="POST" action="/payments/initiate">
     <input type="hidden" name="listingId" value="<%= listingId %>">
+
     <label>Start Date<input type="date" name="startDate"></label><br>
     <label>End Date<input type="date" name="endDate"></label><br>
-    <label><input type="checkbox" name="laundry"> Add laundry service</label><br>
-    <button type="submit">Pay / Book (stub)</button>
+
+    <fieldset style="margin-top:8px; padding:8px; border:1px solid #eee;">
+      <legend>Optional services</legend>
+
+      <div>
+        <label>
+          <input type="checkbox" name="laundry" value="on" id="laundryCheckbox">
+          Add laundry service (₦<%= typeof laundryPrice !== 'undefined' ? laundryPrice.toFixed(2) : '3000.00' %>)
+        </label>
+        <div style="margin-left:22px;">
+          <label>Choose laundry provider (optional):
+            <select name="laundry_provider_id">
+              <option value="">-- choose provider (or leave blank) --</option>
+              <% if (typeof laundryProviders !== 'undefined' && laundryProviders.length) { %>
+                <% laundryProviders.forEach(function(p){ %>
+                  <option value="<%= p.id %>"><%= p.name %> <% if (p.phone) { %> — <%= p.phone %><% } %></option>
+                <% }) %>
+              <% } %>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div style="margin-top:6px;">
+        <label>
+          <input type="checkbox" name="food" value="on" id="foodCheckbox">
+          Add food service (₦<%= typeof foodPrice !== 'undefined' ? foodPrice.toFixed(2) : '2000.00' %>)
+        </label>
+        <div style="margin-left:22px;">
+          <label>Choose food vendor (optional):
+            <select name="food_provider_id">
+              <option value="">-- choose vendor (or leave blank) --</option>
+              <% if (typeof foodVendors !== 'undefined' && foodVendors.length) { %>
+                <% foodVendors.forEach(function(p){ %>
+                  <option value="<%= p.id %>"><%= p.name %> <% if (p.phone) { %> — <%= p.phone %><% } %></option>
+                <% }) %>
+              <% } %>
+            </select>
+          </label>
+        </div>
+      </div>
+    </fieldset>
+
+    <button type="submit" style="margin-top:10px;">Pay / Book (stub)</button>
   </form>
+<% } %>
+
 </section>

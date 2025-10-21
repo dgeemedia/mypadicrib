@@ -273,3 +273,82 @@ CREATE TABLE IF NOT EXISTS user_suspensions (
 
 UPDATE users SET status='active', suspended_until=NULL
 WHERE status='suspended' AND suspended_until IS NOT NULL AND suspended_until <= now();
+
+CREATE TABLE IF NOT EXISTS listing_actions (
+  id SERIAL PRIMARY KEY,
+  listing_id INTEGER REFERENCES listings(id) ON DELETE CASCADE,
+  admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  action TEXT NOT NULL,
+  reason TEXT,
+  metadata JSONB,
+  created_at timestamptz DEFAULT now()
+);
+
+-- 1. add paid_until and billing info on listings (if you prefer listing-level)
+ALTER TABLE listings
+  ADD COLUMN IF NOT EXISTS paid_until timestamptz NULL,
+  ADD COLUMN IF NOT EXISTS payment_plan text NULL;  -- 'monthly' | 'yearly' | null
+
+-- 2. extend listing_fees to support subscription-like records (one per payment)
+ALTER TABLE listing_fees
+  ADD COLUMN IF NOT EXISTS period text NULL,        -- 'monthly' | 'yearly'
+  ADD COLUMN IF NOT EXISTS starts_at timestamptz NULL,
+  ADD COLUMN IF NOT EXISTS ends_at timestamptz NULL,
+  ADD COLUMN IF NOT EXISTS paid_at timestamptz NULL,
+  ADD COLUMN IF NOT EXISTS invoice_ref text NULL;
+
+CREATE INDEX IF NOT EXISTS idx_listing_fees_listing_id ON listing_fees(listing_id);
+CREATE INDEX IF NOT EXISTS idx_listings_paid_until ON listings(paid_until);
+
+-- optional audit and reminder table
+CREATE TABLE IF NOT EXISTS listing_reminders (
+  id SERIAL PRIMARY KEY,
+  listing_id INT REFERENCES listings(id) ON DELETE CASCADE,
+  reminder_type TEXT, -- 'expiry_warning' | 'expired'
+  sent_at timestamptz DEFAULT now()
+);
+
+-- ensure columns exist (you already ran similar but safe)
+ALTER TABLE listings
+  ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending',
+  ADD COLUMN IF NOT EXISTS listing_fee_paid boolean DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS listing_fee_amount numeric(10,2) DEFAULT 0.00,
+  ADD COLUMN IF NOT EXISTS deleted_at timestamptz NULL;
+
+CREATE INDEX IF NOT EXISTS idx_listings_status ON listings(status);
+CREATE INDEX IF NOT EXISTS idx_listings_owner_id ON listings(owner_id);
+
+-- suspend unpaid listings older than 3 days
+UPDATE listings
+SET status = 'suspended', is_active = false
+WHERE listing_fee_amount > 0
+  AND listing_fee_paid = false
+  AND created_at < now() - interval '3 days'
+  AND status != 'deleted';
+
+-- 1. add paid_until and billing info on listings (if you prefer listing-level)
+ALTER TABLE listings
+  ADD COLUMN IF NOT EXISTS paid_until timestamptz NULL,
+  ADD COLUMN IF NOT EXISTS payment_plan text NULL;  -- 'monthly' | 'yearly' | null
+
+-- 2. extend listing_fees to support subscription-like records (one per payment)
+ALTER TABLE listing_fees
+  ADD COLUMN IF NOT EXISTS period text NULL,        -- 'monthly' | 'yearly'
+  ADD COLUMN IF NOT EXISTS starts_at timestamptz NULL,
+  ADD COLUMN IF NOT EXISTS ends_at timestamptz NULL,
+  ADD COLUMN IF NOT EXISTS paid_at timestamptz NULL,
+  ADD COLUMN IF NOT EXISTS invoice_ref text NULL;
+
+CREATE INDEX IF NOT EXISTS idx_listing_fees_listing_id ON listing_fees(listing_id);
+CREATE INDEX IF NOT EXISTS idx_listings_paid_until ON listings(paid_until);
+
+-- optional audit and reminder table
+CREATE TABLE IF NOT EXISTS listing_reminders (
+  id SERIAL PRIMARY KEY,
+  listing_id INT REFERENCES listings(id) ON DELETE CASCADE,
+  reminder_type TEXT, -- 'expiry_warning' | 'expired'
+  sent_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE laundry_providers ADD COLUMN price numeric; 
+ALTER TABLE food_vendors ADD COLUMN price numeric;

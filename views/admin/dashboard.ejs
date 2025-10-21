@@ -1,7 +1,8 @@
-<!--views/admin/dashboard.ejs-->
+<!-- views/admin/dashboard.ejs -->
 <section class="container">
   <h1>Admin Dashboard</h1>
 
+  <!-- Pending Listings -->
   <% if (pending && pending.length) { %>
     <section>
       <h2>Pending Listings</h2>
@@ -19,7 +20,7 @@
         </thead>
         <tbody>
           <% pending.forEach(function(l, idx) { %>
-            <tr>
+            <tr data-listing-id="<%= l.id %>" data-status="<%= (l.status||'').toLowerCase() %>">
               <td><%= idx + 1 %></td>
               <td><a href="/listings/<%= l.id %>"><%= l.title %></a></td>
               <td><%= l.owner_name || 'Unknown' %></td>
@@ -28,11 +29,9 @@
                 <% if (l.verification_id && l.selfie_path) { %>
                   <a href="/admin/verification-file/<%= l.verification_id %>/selfie" target="_blank" rel="noopener">View Selfie</a><br>
                 <% } %>
-
                 <% if (l.verification_id && l.id_card_path) { %>
                   <a href="/admin/verification-file/<%= l.verification_id %>/id_card" target="_blank" rel="noopener">View ID Card</a><br>
                 <% } %>
-
                 <% if (l.id_number) { %>
                   <small><strong>ID#:</strong> <%= l.id_number %></small>
                 <% } %>
@@ -40,35 +39,16 @@
               <td><%= new Date(l.created_at).toLocaleString() %></td>
 
               <td>
-                <% /* Actions: pending -> Approve / Reject */ %>
-                <% if (l.status === 'pending') { %>
-                  <form method="POST" action="/admin/listings/<%= l.id %>/approve" style="display:inline">
-                    <button type="submit">Approve</button>
-                  </form>
+                <!-- Approve (direct submit) -->
+                <form method="POST" action="/admin/listings/<%= l.id %>/approve" style="display:inline" class="listing-action-form" data-listing-id="<%= l.id %>">
+                  <button type="submit">Approve</button>
+                </form>
 
-                  <form method="POST" action="/admin/listings/<%= l.id %>/reject" style="display:inline" class="reject-form">
-                    <input type="hidden" name="reason" class="reject-reason-input" value="">
-                    <button type="button" class="reject-btn" data-listing-id="<%= l.id %>">Reject</button>
-                  </form>
-                <% } else if (l.status === 'approved') { %>
-                  <form method="POST" action="/admin/listings/<%= l.id %>/suspend" style="display:inline" onsubmit="return confirm('Suspend this listing?')">
-                    <button type="submit">Suspend</button>
-                  </form>
-
-                  <form method="POST" action="/admin/listings/<%= l.id %>/delete" style="display:inline" onsubmit="return confirm('Permanently delete this listing? This cannot be undone.')">
-                    <button type="submit">Delete</button>
-                  </form>
-                <% } else if (l.status === 'suspended') { %>
-                  <form method="POST" action="/admin/listings/<%= l.id %>/reactivate" style="display:inline" onsubmit="return confirm('Reactivate listing?')">
-                    <button type="submit">Reactivate</button>
-                  </form>
-
-                  <form method="POST" action="/admin/listings/<%= l.id %>/delete" style="display:inline" onsubmit="return confirm('Permanently delete this listing? This cannot be undone.')">
-                    <button type="submit">Delete</button>
-                  </form>
-                <% } else { %>
-                  <span><%= l.status %></span>
-                <% } %>
+                <!-- Reject: uses modal; form contains hidden input that modal will fill -->
+                <form method="POST" action="/admin/listings/<%= l.id %>/reject" style="display:inline" class="reject-form listing-action-form" data-listing-id="<%= l.id %>">
+                  <input type="hidden" name="reason" class="reject-reason-input" value="">
+                  <button type="button" class="btn-admin-action" data-action="reject" data-listing-id="<%= l.id %>">Reject</button>
+                </form>
 
                 <a href="/listings/<%= l.id %>" style="margin-left:8px">View</a>
               </td>
@@ -83,9 +63,113 @@
 
   <hr>
 
+  <!-- MANAGE EXISTING LISTINGS -->
+  <section>
+    <h2>Manage Listings</h2>
+
+    <div style="display:flex; gap:12px; align-items:center; margin-bottom:8px;">
+      <label>
+        Show:
+        <select id="listing-filter" aria-label="Filter listings">
+          <option value="all">All</option>
+          <option value="approved">Approved</option>
+          <option value="pending">Pending</option>
+          <option value="suspended">Suspended</option>
+          <option value="payment_required">Payment required</option>
+          <option value="deleted">Deleted</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </label>
+
+      <label>
+        Per page:
+        <select id="per-page" aria-label="Listings per page">
+          <option value="5">5</option>
+          <option value="10" selected>10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+        </select>
+      </label>
+
+      <div id="managed-listings-info" style="margin-left:auto; font-size:0.95em;"></div>
+    </div>
+
+    <% if (managedListings && managedListings.length) { %>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Title</th>
+            <th>Owner</th>
+            <th>Price</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="managed-listings-body">
+          <% managedListings.forEach(function(l, idx) { %>
+            <tr data-listing-id="<%= l.id %>" data-status="<%= (l.status||'').toLowerCase() %>">
+              <td><%= idx + 1 %></td>
+              <td><a href="/listings/<%= l.id %>"><%= l.title %></a></td>
+              <td><%= l.owner_name || 'Unknown' %></td>
+              <td>&#8358;<%= l.price %></td>
+              <td><%= l.status %></td>
+              <td><%= new Date(l.created_at).toLocaleString() %></td>
+              <td>
+                <!-- Suspend (modal) -->
+                <form method="POST" action="/admin/listings/<%= l.id %>/suspend" style="display:inline" class="listing-action-form" data-listing-id="<%= l.id %>">
+                  <input type="hidden" name="reason" class="suspend-reason-input" value="">
+                  <input type="hidden" name="suspended_until" class="suspended-until-input" value="">
+                  <button type="button" class="btn-admin-action" data-action="suspend" data-listing-id="<%= l.id %>">Suspend</button>
+                </form>
+
+                <!-- Reactivate (modal) -->
+                <form method="POST" action="/admin/listings/<%= l.id %>/reactivate" style="display:inline" class="listing-action-form" data-listing-id="<%= l.id %>">
+                  <input type="hidden" name="reason" class="reactivate-reason-input" value="">
+                  <button type="button" class="btn-admin-action" data-action="reactivate" data-listing-id="<%= l.id %>">Reactivate</button>
+                </form>
+
+                <!-- Delete (modal) -->
+                <form method="POST" action="/admin/listings/<%= l.id %>/delete" style="display:inline" class="listing-action-form" data-listing-id="<%= l.id %>">
+                  <input type="hidden" name="reason" class="delete-reason-input" value="">
+                  <button type="button" class="btn-admin-action" data-action="delete" data-listing-id="<%= l.id %>">Delete</button>
+                </form>
+
+                <a href="/listings/<%= l.id %>" style="margin-left:8px">View</a>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+
+      <div id="managed-listings-pagination" style="margin-top:10px;"></div>
+    <% } else { %>
+      <p>No listings to manage.</p>
+    <% } %>
+  </section>
+
+  <hr>
+
   <!-- USERS MANAGEMENT -->
   <section>
     <h2>Users</h2>
+
+    <div style="display:flex; gap:12px; align-items:center; margin-bottom:8px;">
+      <label>
+        Filter:
+        <select id="user-filter" aria-label="Filter users">
+          <option value="all">All</option>
+          <option value="admins">Admins</option>
+          <option value="staff">Staff</option>
+          <option value="owners">Owners</option>
+          <option value="active">Active</option>
+          <option value="suspended">Suspended</option>
+        </select>
+      </label>
+
+      <div id="users-info" style="margin-left:auto; font-size:0.95em;"></div>
+    </div>
 
     <% if (users && users.length) { %>
       <table>
@@ -94,41 +178,54 @@
             <th>#</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="users-table-body">
           <% users.forEach(function(u, i){ %>
-            <tr>
-              <td><%= i + 1 %></td>
-              <td><%= u.name %></td>
-              <td><%= u.email %></td>
-              <td><%= u.role %></td>
-              <td>
-                <%= u.status %>
-                <% if (u.suspended_until) { %>
-                  <br><small>until <%= new Date(u.suspended_until).toLocaleString() %></small>
-                <% } %>
-              </td>
-              <td>
-                <% if (u.status !== 'suspended') { %>
-                  <form method="POST" action="/admin/users/<%= u.id %>/suspend" class="suspend-form" style="display:inline">
+  <tr data-user-id="<%= u.id %>" data-role="<%= (u.role || 'owner') %>" data-status="<%= (u.status || '') %>">
+    <td><%= i + 1 %></td>
+    <td><%= u.name %></td>
+    <td><%= u.email %></td>
+    <td><%= u.role %></td>
+    <td>
+      <%= u.status %>
+      <% if (u.suspended_until) { %>
+        <br><small>until <%= new Date(u.suspended_until).toLocaleString() %></small>
+      <% } %>
+    </td>
+    <td>
+                <% if ((u.role||'').toLowerCase() !== 'staff' && (u.role||'').toLowerCase() !== 'admin') { %>
+                  <!-- Suspend owner (modal) -->
+                  <form method="POST" action="/admin/users/<%= u.id %>/suspend" class="suspend-form" data-user-id="<%= u.id %>" style="display:inline">
                     <input type="hidden" name="suspended_until" class="suspended-until-input" value="">
                     <input type="hidden" name="reason" class="suspend-reason-input" value="">
-                    <button type="button" class="suspend-user-btn" data-user-id="<%= u.id %>">Suspend</button>
+                    <button type="button" class="btn-admin-action suspend-user-btn" data-action="suspend-user" data-user-id="<%= u.id %>">Suspend</button>
                   </form>
-                <% } else { %>
-                  <form method="POST" action="/admin/users/<%= u.id %>/reactivate" class="reactivate-form" style="display:inline">
-                    <input type="hidden" name="reason" class="reactivate-reason-input" value="">
-                    <button type="button" class="reactivate-user-btn" data-user-id="<%= u.id %>">Reactivate</button>
+                <% } else if ((u.role||'').toLowerCase() === 'staff') { %>
+                  <!-- For staff, allow suspend too -->
+                  <form method="POST" action="/admin/users/<%= u.id %>/suspend" class="suspend-form" data-user-id="<%= u.id %>" style="display:inline">
+                    <input type="hidden" name="suspended_until" class="suspended-until-input" value="">
+                    <input type="hidden" name="reason" class="suspend-reason-input" value="">
+                    <button type="button" class="btn-admin-action suspend-user-btn" data-action="suspend-user" data-user-id="<%= u.id %>">Suspend</button>
                   </form>
                 <% } %>
 
-                <form method="POST" action="/admin/users/<%= u.id %>/delete" style="display:inline" onsubmit="return confirm('Delete user permanently? This cannot be undone.')">
-                  <button type="submit">Delete</button>
+                <% if ((u.status||'').toLowerCase() === 'suspended') { %>
+                  <form method="POST" action="/admin/users/<%= u.id %>/reactivate" class="reactivate-form" data-user-id="<%= u.id %>" style="display:inline">
+                    <input type="hidden" name="reason" class="reactivate-reason-input" value="">
+                    <button type="button" class="btn-admin-action reactivate-user-btn" data-action="reactivate-user" data-user-id="<%= u.id %>">Reactivate</button>
+                  </form>
+                <% } %>
+
+                <form method="POST" action="/admin/users/<%= u.id %>/delete" class="delete-user-form" data-user-id="<%= u.id %>" style="display:inline">
+                  <input type="hidden" name="reason" class="delete-reason-input" value="">
+                  <button type="button" class="btn-admin-action" data-action="delete-user" data-user-id="<%= u.id %>">Delete</button>
                 </form>
               </td>
             </tr>
           <% }) %>
         </tbody>
       </table>
+
+      <div id="users-pagination" style="margin-top:10px;"></div>
     <% } else { %>
       <p>No users found.</p>
     <% } %>
@@ -180,46 +277,117 @@
   </section>
 </section>
 
-<script>
-document.addEventListener('click', function(e){
-  // listing reject button (existing)
-  if (e.target.matches('.reject-btn')) {
-    const btn = e.target;
-    const reason = prompt('Enter reason for rejection (this will be sent to the owner):');
-    if (reason === null) return; // user cancelled
-    const form = btn.closest('.reject-form');
-    const input = form.querySelector('.reject-reason-input');
-    input.value = reason.trim() || 'No reason provided';
-    form.submit();
+<!-- Accessible modal (JS also capable of creating one if missing) -->
+<div id="admin-action-modal" class="modal" aria-hidden="true" style="display:none;">
+  <div class="modal-inner" role="dialog" aria-modal="true" style="background:#fff; padding:16px; max-width:520px; margin:40px auto; border-radius:6px;">
+    <div id="admin-action-modal-desc" style="margin-bottom:8px; font-weight:600;"></div>
+    <div style="margin-bottom:8px;">
+      <label style="display:block;">Reason<br><input id="admin-action-reason" type="text" style="width:100%"></label>
+    </div>
+    <div id="admin-action-until" style="margin-bottom:8px; display:none;">
+      <label style="display:block;">Until (optional)<br><input id="admin-action-until-input" type="datetime-local" style="width:100%"></label>
+    </div>
+    <div style="text-align:right;">
+      <button id="admin-action-cancel" type="button">Cancel</button>
+      <button id="admin-action-confirm" type="button" style="margin-left:8px;">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Include the admin JS (make sure file is served from /public/js/admin-dashboard.js) -->
+<script src="/js/admin-dashboard.js"></script>
+
+<style>
+  /* Modal backdrop & centering */
+  #admin-action-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.45);
+    padding: 20px;
+  }
+  #admin-action-modal[aria-hidden="false"] {
+    display: flex;
   }
 
-  // suspend user: prompt for until-date (optional) and reason, then submit form
-  if (e.target.matches('.suspend-user-btn')) {
-    const btn = e.target;
-    const form = btn.closest('.suspend-form');
-    const untilInput = form.querySelector('.suspended-until-input');
-    const reasonInput = form.querySelector('.suspend-reason-input');
-
-    const until = prompt('Enter suspended-until date and time (ISO or "YYYY-MM-DD HH:MM"), or leave empty for indefinite:');
-    if (until === null) return; // cancelled
-    const reason = prompt('Enter reason for suspension (this will be recorded and sent to user):');
-    if (reason === null) return;
-
-    untilInput.value = until.trim() || '';
-    reasonInput.value = reason.trim() || 'Violation of platform rules';
-    form.submit();
+  /* Modal inner card */
+  #admin-action-modal .modal-inner {
+    width: 100%;
+    max-width: 640px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    padding: 18px;
+    transform: translateY(6px);
+    transition: transform .18s ease, opacity .16s ease;
+  }
+  #admin-action-modal[aria-hidden="false"] .modal-inner {
+    transform: translateY(0);
   }
 
-  // reactivate user: prompt for optional note/reason before submit
-  if (e.target.matches('.reactivate-user-btn')) {
-    const btn = e.target;
-    const form = btn.closest('.reactivate-form');
-    const reasonInput = form.querySelector('.reactivate-reason-input');
-
-    const reason = prompt('Enter note/reason for reactivation (optional):');
-    if (reason === null) return; // cancelled
-    reasonInput.value = reason.trim() || 'Restitution confirmed';
-    form.submit();
+  /* Modal content */
+  #admin-action-modal #admin-action-modal-desc {
+    font-size: 1rem;
+    margin-bottom: 10px;
+    color: #111;
   }
-});
-</script>
+  #admin-action-modal input[type="text"],
+  #admin-action-modal input[type="datetime-local"],
+  #admin-action-modal select,
+  #admin-action-modal textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border: 1px solid #d6d6d6;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    outline: none;
+  }
+  #admin-action-modal input:focus,
+  #admin-action-modal textarea:focus {
+    box-shadow: 0 0 0 3px rgba(50,115,220,0.12);
+    border-color: #3478f6;
+  }
+
+  /* Buttons row */
+  #admin-action-modal .modal-inner > div:last-child {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  #admin-action-modal button {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: #f3f4f6;
+    color: #111;
+    font-weight: 600;
+  }
+  #admin-action-modal button#admin-action-confirm {
+    background: #0b74ff;
+    color: #fff;
+    border-color: rgba(11,116,255,0.9);
+  }
+  #admin-action-modal button:hover { filter: brightness(.98); }
+  #admin-action-modal button:active { transform: translateY(1px); }
+
+  /* Table styling (small enhancements) */
+  table { width: 100%; border-collapse: collapse; border: 1px solid #e6e6e6; }
+  table th, table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+  table thead th { background: #fafafa; font-weight: 700; color: #222; }
+  tr[data-status="suspended"] td { opacity: 0.92; }
+  tr[data-status="payment_required"] td { background: #fff8e6; }
+
+  /* Small responsive tweaks */
+  @media (max-width: 700px) {
+    #admin-action-modal .modal-inner { padding: 14px; border-radius: 8px; }
+    table th, table td { padding: 8px; font-size: 0.95rem; }
+    #admin-action-modal .modal-inner > div:last-child { flex-direction: column-reverse; align-items: stretch; }
+    #admin-action-modal button { width: 100%; }
+  }
+</style>
+

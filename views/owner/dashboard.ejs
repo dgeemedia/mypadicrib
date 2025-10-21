@@ -33,19 +33,32 @@
             <h3><a href="/listings/<%= l.id %>"><%= l.title %></a></h3>
             <p><%= l.description %></p>
             <p><strong>Price (per night):</strong> &#8358;<%= l.price %></p>
+
+            <!-- Status block with paid_until and renew/pay links -->
             <p>
               <strong>Status:</strong>
               <% if (l.status === 'pending') { %>
                 <span>Pending verification</span>
-              <% } else if (l.status === 'approved') { %>
-                <span>Approved</span>
-              <% } else if (l.status === 'rejected') { %>
-                <span>Rejected</span>
+              <% } else if (l.status === 'approved' && l.is_active) { %>
+                <span>Approved — active</span>
+                <% if (l.paid_until) { %>
+                  <small> (paid until <%= new Date(l.paid_until).toLocaleString() %>)</small>
+                  <% if (new Date(l.paid_until) <= new Date()) { %>
+                    <span style="color:crimson"> — expired</span>
+                  <% } %>
+                <% } %>
+              <% } else if (l.status === 'payment_required') { %>
+                <span>Payment required — <a href="/payments/listing-fee?listingId=<%= l.id %>">Pay now</a></span>
+              <% } else if (!l.is_active || l.status === 'suspended') { %>
+                <span>Suspended / Inactive — <a href="/payments/listing-fee?listingId=<%= l.id %>">Renew</a></span>
+              <% } else if (l.status === 'deleted') { %>
+                <span>Deleted (soft)</span>
               <% } else { %>
                 <span><%= l.status %></span>
               <% } %>
             </p>
 
+            <!-- Listing fee summary -->
             <p>
               <strong>Listing fee:</strong>
               <% if (l.listing_fee_amount && !l.listing_fee_paid) { %>
@@ -57,6 +70,20 @@
                 <span>Free</span>
               <% } %>
             </p>
+
+            <!-- Renew form (owner only) -->
+            <% if (user && user.id === l.owner_id) { %>
+              <form method="GET" action="/payments/listing-fee" style="display:inline; margin-bottom:10px;">
+                <input type="hidden" name="listingId" value="<%= l.id %>">
+                <label style="margin-right:6px;">
+                  <select name="period">
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </label>
+                <button type="submit">Renew</button>
+              </form>
+            <% } %>
 
             <section>
               <h4>Images</h4>
