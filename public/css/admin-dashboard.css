@@ -1,0 +1,92 @@
+/* public/css/admin-dashboard.css */
+  /* Modal backdrop & centering */
+  #admin-action-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.45);
+    padding: 20px;
+  }
+  #admin-action-modal[aria-hidden="false"] {
+    display: flex;
+  }
+
+  /* Modal inner card */
+  #admin-action-modal .modal-inner {
+    width: 100%;
+    max-width: 640px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    padding: 18px;
+    transform: translateY(6px);
+    transition: transform .18s ease, opacity .16s ease;
+  }
+  #admin-action-modal[aria-hidden="false"] .modal-inner {
+    transform: translateY(0);
+  }
+
+  /* Modal content */
+  #admin-action-modal #admin-action-modal-desc {
+    font-size: 1rem;
+    margin-bottom: 10px;
+    color: #111;
+  }
+  #admin-action-modal input[type="text"],
+  #admin-action-modal input[type="datetime-local"],
+  #admin-action-modal select,
+  #admin-action-modal textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border: 1px solid #d6d6d6;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    outline: none;
+  }
+  #admin-action-modal input:focus,
+  #admin-action-modal textarea:focus {
+    box-shadow: 0 0 0 3px rgba(50,115,220,0.12);
+    border-color: #3478f6;
+  }
+
+  /* Buttons row */
+  #admin-action-modal .modal-inner > div:last-child {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  #admin-action-modal button {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: #f3f4f6;
+    color: #111;
+    font-weight: 600;
+  }
+  #admin-action-modal button#admin-action-confirm {
+    background: #0b74ff;
+    color: #fff;
+    border-color: rgba(11,116,255,0.9);
+  }
+  #admin-action-modal button:hover { filter: brightness(.98); }
+  #admin-action-modal button:active { transform: translateY(1px); }
+
+  /* Table styling (small enhancements) */
+  table { width: 100%; border-collapse: collapse; border: 1px solid #e6e6e6; }
+  table th, table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+  table thead th { background: #fafafa; font-weight: 700; color: #222; }
+  tr[data-status="suspended"] td { opacity: 0.92; }
+  tr[data-status="payment_required"] td { background: #fff8e6; }
+
+  /* Small responsive tweaks */
+  @media (max-width: 700px) {
+    #admin-action-modal .modal-inner { padding: 14px; border-radius: 8px; }
+    table th, table td { padding: 8px; font-size: 0.95rem; }
+    #admin-action-modal .modal-inner > div:last-child { flex-direction: column-reverse; align-items: stretch; }
+    #admin-action-modal button { width: 100%; }
+  }
