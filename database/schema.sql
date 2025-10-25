@@ -1,354 +1,415 @@
--- PostgreSQL schema for mypadiCrib starter
-CREATE TABLE IF NOT EXISTS users (
-  id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
-  phone TEXT,
-  password_hash TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'user',
-  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+-- init_clean_mypadicrib.sql
+-- Clean recreate for mypadicrib schema (listings/bookings/messages/etc.)
+-- WARNING: This will DROP existing objects in public schema mentioned here.
+-- Adjust owner names if needed before running.
+
+-- ========== DROP objects (safe to re-run) ==========
+DROP TABLE IF EXISTS public.booking_services CASCADE;
+DROP TABLE IF EXISTS public.bookings CASCADE;
+DROP TABLE IF EXISTS public.conversation_members CASCADE;
+DROP TABLE IF EXISTS public.conversations CASCADE;
+DROP TABLE IF EXISTS public.food_vendors CASCADE;
+DROP TABLE IF EXISTS public.laundry_providers CASCADE;
+DROP TABLE IF EXISTS public.laundry_requests CASCADE;
+DROP TABLE IF EXISTS public.listing_actions CASCADE;
+DROP TABLE IF EXISTS public.listing_fees CASCADE;
+DROP TABLE IF EXISTS public.listing_images CASCADE;
+DROP TABLE IF EXISTS public.listing_reminders CASCADE;
+DROP TABLE IF EXISTS public.listing_verifications CASCADE;
+DROP TABLE IF EXISTS public.listings CASCADE;
+DROP TABLE IF EXISTS public.messages CASCADE;
+DROP TABLE IF EXISTS public.reviews CASCADE;
+DROP TABLE IF EXISTS public.user_suspensions CASCADE;
+DROP TABLE IF EXISTS public.users CASCADE;
+
+-- Drop sequences
+DROP SEQUENCE IF EXISTS public.booking_services_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.bookings_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.conversation_members_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.conversations_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.food_vendors_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.laundry_providers_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.laundry_requests_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.listing_actions_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.listing_fees_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.listing_images_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.listing_reminders_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.listing_verifications_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.listings_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.messages_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.reviews_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.user_suspensions_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.users_id_seq CASCADE;
+
+-- ========== Sequences ==========
+CREATE SEQUENCE public.booking_services_id_seq
+  AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.booking_services_id_seq OWNER TO mypadicrib_user;
+
+CREATE SEQUENCE public.bookings_id_seq
+  AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.bookings_id_seq OWNER TO mypadicrib_user;
+
+CREATE SEQUENCE public.conversation_members_id_seq
+  AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.conversation_members_id_seq OWNER TO mypadicrib_user;
+
+CREATE SEQUENCE public.conversations_id_seq
+  AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.conversations_id_seq OWNER TO mypadicrib_user;
+
+CREATE SEQUENCE public.food_vendors_id_seq
+  AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.food_vendors_id_seq OWNER TO mypadicrib_user;
+
+CREATE SEQUENCE public.laundry_providers_id_seq
+  AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.laundry_providers_id_seq OWNER TO mypadicrib_user;
+
+CREATE SEQUENCE public.laundry_requests_id_seq
+  AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.laundry_requests_id_seq OWNER TO mypadicrib_user;
+
+CREATE SEQUENCE public.listing_actions_id_seq
+  AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.listing_actions_id_seq OWNER TO mypadicrib_user;
+
+CREATE SEQUENCE public.listing_fees_id_seq
+  AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.listing_fees_id_seq OWNER TO mypadicrib_user;
+
+CREATE SEQUENCE public.listing_images_id_seq
+  AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.listing_images_id_seq OWNER TO mypadicrib_user;
+
+CREATE SEQUENCE public.listing_reminders_id_seq
+  AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.listing_reminders_id_seq OWNER TO mypadicrib_user;
+
+CREATE SEQUENCE public.listing_verifications_id_seq
+  AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.listing_verifications_id_seq OWNER TO mypadicrib_user;
+
+CREATE SEQUENCE public.listings_id_seq
+  AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.listings_id_seq OWNER TO mypadicrib_user;
+
+CREATE SEQUENCE public.messages_id_seq
+  AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.messages_id_seq OWNER TO mypadicrib_user;
+
+CREATE SEQUENCE public.reviews_id_seq
+  AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.reviews_id_seq OWNER TO mypadicrib_user;
+
+CREATE SEQUENCE public.user_suspensions_id_seq
+  AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.user_suspensions_id_seq OWNER TO mypadicrib_user;
+
+CREATE SEQUENCE public.users_id_seq
+  AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.users_id_seq OWNER TO mypadicrib_user;
+
+-- ========== Tables ==========
+CREATE TABLE public.users (
+  id integer NOT NULL DEFAULT nextval('public.users_id_seq'::regclass),
+  name text NOT NULL,
+  email text NOT NULL,
+  phone text,
+  password_hash text NOT NULL,
+  role text DEFAULT 'user'::text NOT NULL,
+  created_at timestamp without time zone DEFAULT now(),
+  is_verified boolean DEFAULT false,
+  status text DEFAULT 'active'::text NOT NULL,
+  suspended_until timestamp with time zone
 );
+ALTER TABLE public.users OWNER TO mypadicrib_user;
 
-CREATE TABLE IF NOT EXISTS listings (
-  id SERIAL PRIMARY KEY,
-  owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  title TEXT NOT NULL,
-  description TEXT,
-  state TEXT,
-  lga TEXT,
-  address TEXT,
-  price NUMERIC(12,2),
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+CREATE TABLE public.listings (
+  id integer NOT NULL DEFAULT nextval('public.listings_id_seq'::regclass),
+  owner_id integer,
+  title text NOT NULL,
+  description text,
+  state text,
+  lga text,
+  address text,
+  price numeric(12,2),
+  is_active boolean DEFAULT true,
+  created_at timestamp without time zone DEFAULT now(),
+  status text DEFAULT 'pending'::text,
+  listing_fee_paid boolean DEFAULT false,
+  listing_fee_amount numeric(10,2) DEFAULT 0.00,
+  suspended_until timestamp with time zone,
+  deleted_at timestamp with time zone,
+  paid_until timestamp with time zone,
+  payment_plan text
 );
+ALTER TABLE public.listings OWNER TO mypadicrib_user;
 
-CREATE TABLE IF NOT EXISTS listing_images (
-  id SERIAL PRIMARY KEY,
-  listing_id INTEGER REFERENCES listings(id) ON DELETE CASCADE,
-  image_path TEXT NOT NULL
+CREATE TABLE public.listing_verifications (
+  id integer NOT NULL DEFAULT nextval('public.listing_verifications_id_seq'::regclass),
+  listing_id integer,
+  owner_id integer,
+  selfie_path text,
+  id_card_path text,
+  id_number text,
+  status character varying(20) DEFAULT 'pending'::character varying,
+  admin_notes text,
+  created_at timestamp with time zone DEFAULT now()
 );
+ALTER TABLE public.listing_verifications OWNER TO mypadicrib_user;
 
-CREATE TABLE IF NOT EXISTS reviews (
-  id SERIAL PRIMARY KEY,
-  listing_id INTEGER REFERENCES listings(id) ON DELETE CASCADE,
-  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  rating INTEGER CHECK (rating >= 1 AND rating <= 5),
-  comment TEXT,
-  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+CREATE TABLE public.listing_reminders (
+  id integer NOT NULL DEFAULT nextval('public.listing_reminders_id_seq'::regclass),
+  listing_id integer,
+  reminder_type text,
+  sent_at timestamp with time zone DEFAULT now()
 );
+ALTER TABLE public.listing_reminders OWNER TO mypadicrib_user;
 
-CREATE TABLE IF NOT EXISTS bookings (
-  id SERIAL PRIMARY KEY,
-  listing_id INTEGER REFERENCES listings(id) ON DELETE CASCADE,
-  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  start_date DATE,
-  end_date DATE,
-  total_price NUMERIC(12,2),
-  paid BOOLEAN DEFAULT false,
-  payment_ref TEXT,
-  laundry_requested BOOLEAN DEFAULT false,
-  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+CREATE TABLE public.listing_images (
+  id integer NOT NULL DEFAULT nextval('public.listing_images_id_seq'::regclass),
+  listing_id integer,
+  image_path text NOT NULL
 );
+ALTER TABLE public.listing_images OWNER TO mypadicrib_user;
 
-CREATE TABLE IF NOT EXISTS laundry_requests (
-  id SERIAL PRIMARY KEY,
-  booking_id INTEGER REFERENCES bookings(id) ON DELETE CASCADE,
-  status TEXT DEFAULT 'pending',
-  requested_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+CREATE TABLE public.listing_fees (
+  id integer NOT NULL DEFAULT nextval('public.listing_fees_id_seq'::regclass),
+  listing_id integer,
+  owner_id integer,
+  amount numeric(10,2),
+  paid boolean DEFAULT false,
+  payment_ref text,
+  created_at timestamp without time zone DEFAULT now(),
+  period text,
+  starts_at timestamp with time zone,
+  ends_at timestamp with time zone,
+  paid_at timestamp with time zone,
+  invoice_ref text
 );
+ALTER TABLE public.listing_fees OWNER TO mypadicrib_user;
 
--- database/migrations.sql
-
--- 1) User verification + role already exists; add is_verified
-ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;
-
--- 2) Add listing status and listing fee tracking
-ALTER TABLE listings
-  ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending', -- pending | approved | rejected
-  ADD COLUMN IF NOT EXISTS listing_fee_paid BOOLEAN DEFAULT FALSE,
-  ADD COLUMN IF NOT EXISTS listing_fee_amount NUMERIC(10,2) DEFAULT 0.00;
-
--- 3) Create table to track listing fee payments (for owner listing payments)
-CREATE TABLE IF NOT EXISTS listing_fees (
-  id SERIAL PRIMARY KEY,
-  listing_id INTEGER REFERENCES listings(id) ON DELETE CASCADE,
-  owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  amount NUMERIC(10,2),
-  paid BOOLEAN DEFAULT false,
-  payment_ref TEXT,
-  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+CREATE TABLE public.listing_actions (
+  id integer NOT NULL DEFAULT nextval('public.listing_actions_id_seq'::regclass),
+  listing_id integer,
+  admin_id integer,
+  action text NOT NULL,
+  reason text,
+  metadata jsonb,
+  created_at timestamp with time zone DEFAULT now()
 );
+ALTER TABLE public.listing_actions OWNER TO mypadicrib_user;
 
--- 4) Laundry providers and food vendors
-CREATE TABLE IF NOT EXISTS laundry_providers (
-  id SERIAL PRIMARY KEY,
-  name TEXT,
-  phone TEXT,
-  email TEXT,
-  active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP DEFAULT now()
+CREATE TABLE public.laundry_requests (
+  id integer NOT NULL DEFAULT nextval('public.laundry_requests_id_seq'::regclass),
+  booking_id integer,
+  status text DEFAULT 'pending'::text,
+  requested_at timestamp without time zone DEFAULT now()
 );
+ALTER TABLE public.laundry_requests OWNER TO mypadicrib_user;
 
-CREATE TABLE IF NOT EXISTS food_vendors (
-  id SERIAL PRIMARY KEY,
-  name TEXT,
-  phone TEXT,
-  email TEXT,
-  active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP DEFAULT now()
+CREATE TABLE public.laundry_providers (
+  id integer NOT NULL DEFAULT nextval('public.laundry_providers_id_seq'::regclass),
+  name text,
+  phone text,
+  email text,
+  active boolean DEFAULT true,
+  created_at timestamp without time zone DEFAULT now(),
+  price numeric
 );
+ALTER TABLE public.laundry_providers OWNER TO mypadicrib_user;
 
--- 5) Booking services (link booking -> service items like laundry, food)
-CREATE TABLE IF NOT EXISTS booking_services (
-  id SERIAL PRIMARY KEY,
-  booking_id INTEGER REFERENCES bookings(id) ON DELETE CASCADE,
-  service_type TEXT, -- 'laundry' | 'food' | 'other'
-  provider_id INTEGER, -- provider id from laundry_providers or food_vendors
-  price NUMERIC(10,2),
-  created_at TIMESTAMP DEFAULT now()
+CREATE TABLE public.food_vendors (
+  id integer NOT NULL DEFAULT nextval('public.food_vendors_id_seq'::regclass),
+  name text,
+  phone text,
+  email text,
+  active boolean DEFAULT true,
+  created_at timestamp without time zone DEFAULT now(),
+  price numeric
 );
+ALTER TABLE public.food_vendors OWNER TO mypadicrib_user;
 
--- 6) Allow owner -> limit logic: no DB column required since we count rows, but we'll create an index
-CREATE INDEX IF NOT EXISTS idx_listings_owner ON listings(owner_id);
-
--- 7) Admin/staff roles are stored in users.role already. (role: 'user' | 'owner' | 'admin' | 'staff')
-
--- migrations/reviews_adjustments.sql
--- 1) add parent_id if missing
-ALTER TABLE reviews
-  ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES reviews(id) ON DELETE CASCADE;
-
--- 2) ensure rating column exists and add CHECK constraint
-ALTER TABLE reviews
-  ALTER COLUMN rating TYPE INTEGER USING rating::integer;
-
--- add check only if not exists (Postgres doesn't have IF NOT EXISTS for constraints easily)
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'reviews_rating_check') THEN
-    ALTER TABLE reviews ADD CONSTRAINT reviews_rating_check CHECK (rating >= 1 AND rating <= 5);
-  END IF;
-END$$;
-
--- 3) make comment NOT NULL safely: set empty string for existing NULLs then enforce
-UPDATE reviews SET comment = '' WHERE comment IS NULL;
-ALTER TABLE reviews ALTER COLUMN comment SET NOT NULL;
-
--- migrations/messages_and_conversations.sql
-
-CREATE TABLE IF NOT EXISTS conversations (
-  id SERIAL PRIMARY KEY,
-  subject TEXT,
-  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
-  last_message_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+CREATE TABLE public.conversations (
+  id integer NOT NULL DEFAULT nextval('public.conversations_id_seq'::regclass),
+  subject text,
+  created_at timestamp without time zone DEFAULT now(),
+  last_message_at timestamp without time zone DEFAULT now()
 );
+ALTER TABLE public.conversations OWNER TO mypadicrib_user;
 
-CREATE TABLE IF NOT EXISTS conversation_members (
-  id SERIAL PRIMARY KEY,
-  conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+CREATE TABLE public.conversation_members (
+  id integer NOT NULL DEFAULT nextval('public.conversation_members_id_seq'::regclass),
+  conversation_id integer,
+  user_id integer
 );
+ALTER TABLE public.conversation_members OWNER TO mypadicrib_user;
 
-CREATE TABLE IF NOT EXISTS messages (
-  id SERIAL PRIMARY KEY,
-  conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
-  sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  body TEXT NOT NULL,
-  read_by JSONB DEFAULT '[]'::JSONB, -- list of user ids who've read this message
-  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+CREATE TABLE public.messages (
+  id integer NOT NULL DEFAULT nextval('public.messages_id_seq'::regclass),
+  conversation_id integer,
+  sender_id integer,
+  body text NOT NULL,
+  read_by jsonb DEFAULT '[]'::jsonb,
+  created_at timestamp without time zone DEFAULT now()
 );
+ALTER TABLE public.messages OWNER TO mypadicrib_user;
 
-CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id);
-CREATE INDEX IF NOT EXISTS idx_conv_members_user ON conversation_members(user_id);
-
--- create_listing_verifications.sql
-CREATE TABLE listing_verifications (
-  id SERIAL PRIMARY KEY,
-  listing_id INTEGER REFERENCES listings(id) ON DELETE CASCADE,
-  owner_id INTEGER REFERENCES users(id),
-  selfie_path TEXT,
-  id_card_path TEXT,
-  id_number TEXT,
-  status VARCHAR(20) DEFAULT 'pending',
-  admin_notes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+CREATE TABLE public.bookings (
+  id integer NOT NULL DEFAULT nextval('public.bookings_id_seq'::regclass),
+  listing_id integer,
+  user_id integer,
+  start_date date,
+  end_date date,
+  total_price numeric(12,2),
+  paid boolean DEFAULT false,
+  payment_ref text,
+  laundry_requested boolean DEFAULT false,
+  created_at timestamp without time zone DEFAULT now()
 );
+ALTER TABLE public.bookings OWNER TO mypadicrib_user;
 
--- Preview what will be updated (run first)
-SELECT id, image_path,
-       regexp_replace(image_path, '^.*[\\/]+uploads[\\/]+', '') AS filename_only,
-       '/uploads/' || regexp_replace(image_path, '^.*[\\/]+uploads[\\/]+', '') AS new_path
-FROM listing_images
-WHERE image_path IS NOT NULL
-  AND image_path ~* 'uploads[\\/]' ;
-
--- If the preview looks correct, run the update:
-UPDATE listing_images
-SET image_path = '/uploads/' || regexp_replace(image_path, '^.*[\\/]+uploads[\\/]+', '')
-WHERE image_path IS NOT NULL
-  AND image_path ~* 'uploads[\\/]' ;
-
--- optional: add expiry/suspended metadata
-ALTER TABLE listings
-ADD COLUMN suspended_until timestamptz NULL,
-ADD COLUMN deleted_at timestamptz NULL;
-
--- replace 123 with the listing id
-UPDATE listings
-SET status = 'suspended', is_active = false, suspended_until = NULL
-WHERE id = 123;
-
-UPDATE listings
-SET status = 'approved', is_active = true, suspended_until = NULL
-WHERE id = 123;
-
-BEGIN;
-
--- delete images (DB)
-DELETE FROM listing_images WHERE listing_id = 123;
-
--- delete verification record (optional)
-DELETE FROM listing_verifications WHERE listing_id = 123;
-
--- delete listing fees, bookings, reviews etc. (example)
-DELETE FROM listing_fees WHERE listing_id = 123;
-DELETE FROM bookings WHERE listing_id = 123;
-DELETE FROM reviews WHERE listing_id = 123;
-
--- finally delete the listing
-DELETE FROM listings WHERE id = 123;
-
-COMMIT;
-
--- suspend listings whose suspended_until is in the past
-UPDATE listings
-SET status='suspended', is_active=false
-WHERE suspended_until IS NOT NULL
-  AND suspended_until < now()
-  AND is_active = true;
-
--- add status to users (default active)
-ALTER TABLE users
-  ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active';
-
--- optional: record suspended until timestamp
-ALTER TABLE users
-  ADD COLUMN IF NOT EXISTS suspended_until timestamptz NULL;
-
--- ensure listings supports 'suspended' (if statuses are freeform this is not necessary)
-ALTER TABLE listings
-  ALTER COLUMN status TYPE text USING status::text;
-
-CREATE INDEX IF NOT EXISTS users_status_idx ON users(status);
-
-UPDATE listings
-SET status = 'deleted',
-    is_active = false
-WHERE status = 'approved';
-
-UPDATE users
-SET status = 'suspended',
-    suspended_until = '2025-11-01 00:00:00+00'
-WHERE id = 123;
-
-UPDATE users
-SET status = 'suspended',
-    suspended_until = NULL
-WHERE id = 123;
-
-UPDATE users
-SET status = 'active',
-    suspended_until = NULL
-WHERE id = 123;
-
-CREATE TABLE IF NOT EXISTS user_suspensions (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-  admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  action TEXT NOT NULL, -- 'suspend'|'reinstate'|'note'
-  reason TEXT,
-  metadata JSONB,
-  created_at timestamptz DEFAULT now()
+CREATE TABLE public.booking_services (
+  id integer NOT NULL DEFAULT nextval('public.booking_services_id_seq'::regclass),
+  booking_id integer,
+  service_type text,
+  provider_id integer,
+  price numeric(10,2),
+  created_at timestamp without time zone DEFAULT now()
 );
+ALTER TABLE public.booking_services OWNER TO mypadicrib_user;
 
-UPDATE users SET status='active', suspended_until=NULL
-WHERE status='suspended' AND suspended_until IS NOT NULL AND suspended_until <= now();
-
-CREATE TABLE IF NOT EXISTS listing_actions (
-  id SERIAL PRIMARY KEY,
-  listing_id INTEGER REFERENCES listings(id) ON DELETE CASCADE,
-  admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  action TEXT NOT NULL,
-  reason TEXT,
-  metadata JSONB,
-  created_at timestamptz DEFAULT now()
+CREATE TABLE public.reviews (
+  id integer NOT NULL DEFAULT nextval('public.reviews_id_seq'::regclass),
+  listing_id integer,
+  user_id integer,
+  rating integer,
+  comment text NOT NULL,
+  created_at timestamp without time zone DEFAULT now(),
+  parent_id integer,
+  CONSTRAINT reviews_rating_check CHECK (((rating >= 1) AND (rating <= 5)))
 );
+ALTER TABLE public.reviews OWNER TO mypadicrib_user;
 
--- 1. add paid_until and billing info on listings (if you prefer listing-level)
-ALTER TABLE listings
-  ADD COLUMN IF NOT EXISTS paid_until timestamptz NULL,
-  ADD COLUMN IF NOT EXISTS payment_plan text NULL;  -- 'monthly' | 'yearly' | null
-
--- 2. extend listing_fees to support subscription-like records (one per payment)
-ALTER TABLE listing_fees
-  ADD COLUMN IF NOT EXISTS period text NULL,        -- 'monthly' | 'yearly'
-  ADD COLUMN IF NOT EXISTS starts_at timestamptz NULL,
-  ADD COLUMN IF NOT EXISTS ends_at timestamptz NULL,
-  ADD COLUMN IF NOT EXISTS paid_at timestamptz NULL,
-  ADD COLUMN IF NOT EXISTS invoice_ref text NULL;
-
-CREATE INDEX IF NOT EXISTS idx_listing_fees_listing_id ON listing_fees(listing_id);
-CREATE INDEX IF NOT EXISTS idx_listings_paid_until ON listings(paid_until);
-
--- optional audit and reminder table
-CREATE TABLE IF NOT EXISTS listing_reminders (
-  id SERIAL PRIMARY KEY,
-  listing_id INT REFERENCES listings(id) ON DELETE CASCADE,
-  reminder_type TEXT, -- 'expiry_warning' | 'expired'
-  sent_at timestamptz DEFAULT now()
+CREATE TABLE public.user_suspensions (
+  id integer NOT NULL DEFAULT nextval('public.user_suspensions_id_seq'::regclass),
+  user_id integer,
+  admin_id integer,
+  action text NOT NULL,
+  reason text,
+  metadata jsonb,
+  created_at timestamp with time zone DEFAULT now()
 );
+ALTER TABLE public.user_suspensions OWNER TO mypadicrib_user;
 
--- ensure columns exist (you already ran similar but safe)
-ALTER TABLE listings
-  ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending',
-  ADD COLUMN IF NOT EXISTS listing_fee_paid boolean DEFAULT FALSE,
-  ADD COLUMN IF NOT EXISTS listing_fee_amount numeric(10,2) DEFAULT 0.00,
-  ADD COLUMN IF NOT EXISTS deleted_at timestamptz NULL;
+-- ========== Primary keys and uniques ==========
+ALTER TABLE ONLY public.users ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.users ADD CONSTRAINT users_email_key UNIQUE (email);
 
-CREATE INDEX IF NOT EXISTS idx_listings_status ON listings(status);
-CREATE INDEX IF NOT EXISTS idx_listings_owner_id ON listings(owner_id);
+ALTER TABLE ONLY public.listings ADD CONSTRAINT listings_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.listing_verifications ADD CONSTRAINT listing_verifications_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.listing_reminders ADD CONSTRAINT listing_reminders_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.listing_images ADD CONSTRAINT listing_images_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.listing_fees ADD CONSTRAINT listing_fees_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.listing_actions ADD CONSTRAINT listing_actions_pkey PRIMARY KEY (id);
 
--- suspend unpaid listings older than 3 days
-UPDATE listings
-SET status = 'suspended', is_active = false
-WHERE listing_fee_amount > 0
-  AND listing_fee_paid = false
-  AND created_at < now() - interval '3 days'
-  AND status != 'deleted';
+ALTER TABLE ONLY public.laundry_requests ADD CONSTRAINT laundry_requests_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.laundry_providers ADD CONSTRAINT laundry_providers_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.food_vendors ADD CONSTRAINT food_vendors_pkey PRIMARY KEY (id);
 
--- 1. add paid_until and billing info on listings (if you prefer listing-level)
-ALTER TABLE listings
-  ADD COLUMN IF NOT EXISTS paid_until timestamptz NULL,
-  ADD COLUMN IF NOT EXISTS payment_plan text NULL;  -- 'monthly' | 'yearly' | null
+ALTER TABLE ONLY public.conversations ADD CONSTRAINT conversations_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.conversation_members ADD CONSTRAINT conversation_members_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.messages ADD CONSTRAINT messages_pkey PRIMARY KEY (id);
 
--- 2. extend listing_fees to support subscription-like records (one per payment)
-ALTER TABLE listing_fees
-  ADD COLUMN IF NOT EXISTS period text NULL,        -- 'monthly' | 'yearly'
-  ADD COLUMN IF NOT EXISTS starts_at timestamptz NULL,
-  ADD COLUMN IF NOT EXISTS ends_at timestamptz NULL,
-  ADD COLUMN IF NOT EXISTS paid_at timestamptz NULL,
-  ADD COLUMN IF NOT EXISTS invoice_ref text NULL;
+ALTER TABLE ONLY public.bookings ADD CONSTRAINT bookings_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.booking_services ADD CONSTRAINT booking_services_pkey PRIMARY KEY (id);
 
-CREATE INDEX IF NOT EXISTS idx_listing_fees_listing_id ON listing_fees(listing_id);
-CREATE INDEX IF NOT EXISTS idx_listings_paid_until ON listings(paid_until);
+ALTER TABLE ONLY public.reviews ADD CONSTRAINT reviews_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.user_suspensions ADD CONSTRAINT user_suspensions_pkey PRIMARY KEY (id);
 
--- optional audit and reminder table
-CREATE TABLE IF NOT EXISTS listing_reminders (
-  id SERIAL PRIMARY KEY,
-  listing_id INT REFERENCES listings(id) ON DELETE CASCADE,
-  reminder_type TEXT, -- 'expiry_warning' | 'expired'
-  sent_at timestamptz DEFAULT now()
-);
+-- ========== Indexes ==========
+CREATE INDEX IF NOT EXISTS idx_conv_members_user ON public.conversation_members USING btree (user_id);
+CREATE INDEX IF NOT EXISTS idx_listing_fees_listing_id ON public.listing_fees USING btree (listing_id);
+CREATE INDEX IF NOT EXISTS idx_listings_owner ON public.listings USING btree (owner_id);
+CREATE INDEX IF NOT EXISTS idx_listings_paid_until ON public.listings USING btree (paid_until);
+CREATE INDEX IF NOT EXISTS idx_listings_status ON public.listings USING btree (status);
+CREATE INDEX IF NOT EXISTS idx_messages_conv ON public.messages USING btree (conversation_id);
+CREATE INDEX IF NOT EXISTS users_status_idx ON public.users USING btree (status);
 
-ALTER TABLE laundry_providers ADD COLUMN price numeric; 
-ALTER TABLE food_vendors ADD COLUMN price numeric;
+-- ========== Foreign keys ==========
+ALTER TABLE ONLY public.booking_services
+  ADD CONSTRAINT booking_services_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.bookings
+  ADD CONSTRAINT bookings_listing_id_fkey FOREIGN KEY (listing_id) REFERENCES public.listings(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.bookings
+  ADD CONSTRAINT bookings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+ALTER TABLE ONLY public.conversation_members
+  ADD CONSTRAINT conversation_members_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.conversation_members
+  ADD CONSTRAINT conversation_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.laundry_requests
+  ADD CONSTRAINT laundry_requests_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.listing_actions
+  ADD CONSTRAINT listing_actions_admin_id_fkey FOREIGN KEY (admin_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+ALTER TABLE ONLY public.listing_actions
+  ADD CONSTRAINT listing_actions_listing_id_fkey FOREIGN KEY (listing_id) REFERENCES public.listings(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.listing_fees
+  ADD CONSTRAINT listing_fees_listing_id_fkey FOREIGN KEY (listing_id) REFERENCES public.listings(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.listing_fees
+  ADD CONSTRAINT listing_fees_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+ALTER TABLE ONLY public.listing_images
+  ADD CONSTRAINT listing_images_listing_id_fkey FOREIGN KEY (listing_id) REFERENCES public.listings(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.listing_reminders
+  ADD CONSTRAINT listing_reminders_listing_id_fkey FOREIGN KEY (listing_id) REFERENCES public.listings(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.listing_verifications
+  ADD CONSTRAINT listing_verifications_listing_id_fkey FOREIGN KEY (listing_id) REFERENCES public.listings(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.listing_verifications
+  ADD CONSTRAINT listing_verifications_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id);
+
+ALTER TABLE ONLY public.listings
+  ADD CONSTRAINT listings_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+ALTER TABLE ONLY public.messages
+  ADD CONSTRAINT messages_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.messages
+  ADD CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+ALTER TABLE ONLY public.reviews
+  ADD CONSTRAINT reviews_listing_id_fkey FOREIGN KEY (listing_id) REFERENCES public.listings(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.reviews
+  ADD CONSTRAINT reviews_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.reviews(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.reviews
+  ADD CONSTRAINT reviews_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+ALTER TABLE ONLY public.user_suspensions
+  ADD CONSTRAINT user_suspensions_admin_id_fkey FOREIGN KEY (admin_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+ALTER TABLE ONLY public.user_suspensions
+  ADD CONSTRAINT user_suspensions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+-- ========== Final notes ==========
+-- This script intentionally omits data copying (COPY) and sequence setval adjustments.
+-- After running, create necessary initial admin/users via your app or a separate seed script.
+-- If your DB user differs from mypadicrib_user, edit ALTER ... OWNER TO lines accordingly.
+
+-- End of init_clean_mypadicrib.sql
+
+
+
